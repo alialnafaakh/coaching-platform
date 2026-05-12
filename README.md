@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Maryem — Biopsychosocial Relationship Coaching Site
 
-## Getting Started
+A full-stack Next.js 15 coaching website with:
+- **Landing page** (Hero, About, Services, Testimonials, Pricing, CTA)
+- **Booking flow** (Date picker → Time slot → Contact form → Stripe Checkout)
+- **Admin dashboard** (Slot management + Appointment tracking)
+- **Stripe** payments ($50 after 50% discount)
+- **Supabase** (PostgreSQL) database
+- **NextAuth** credentials-based admin auth
 
-First, run the development server:
+---
+
+## 🚀 Local Development
 
 ```bash
+cd coaching-app
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Open [http://localhost:3000](http://localhost:3000)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Environment Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local` and fill in all values:
 
-## Learn More
+| Variable | Where to get it |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API keys |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Developers → Webhooks (after creating endpoint) |
+| `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | Your Vercel URL (e.g. `https://maryem.vercel.app`) |
+| `ADMIN_USERNAME` | Your choice |
+| `ADMIN_PASSWORD` | Your choice |
+| `NEXT_PUBLIC_APP_URL` | Same as `NEXTAUTH_URL` |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🗄️ Database Setup (Supabase)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor**
+3. Run the contents of `supabase-schema.sql`
+4. Copy your **Project URL** and **anon key** from Settings → API
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 💳 Stripe Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create account at [stripe.com](https://stripe.com)
+2. Get your **test** API keys from Developers → API keys
+3. After deploying, create a webhook endpoint:
+   - URL: `https://your-domain.vercel.app/api/stripe/webhook`
+   - Events: `checkout.session.completed`
+4. Copy the **Webhook Signing Secret** → `STRIPE_WEBHOOK_SECRET`
+
+> For local webhook testing, use [Stripe CLI](https://stripe.com/docs/stripe-cli):
+> ```bash
+> stripe listen --forward-to localhost:3000/api/stripe/webhook
+> ```
+
+---
+
+## 🚢 Deploy to Vercel
+
+1. Push to GitHub
+2. Import repo in [vercel.com](https://vercel.com)
+3. Add all environment variables in Vercel → Project → Settings → Environment Variables
+4. Deploy!
+
+---
+
+## 🔑 Admin Dashboard
+
+Visit `/admin/login` (or click "Admin ↗" in the footer).
+
+Use the `ADMIN_USERNAME` and `ADMIN_PASSWORD` values from your `.env.local`.
+
+**Dashboard features:**
+- `/admin` — Overview with stats
+- `/admin/slots` — Add/remove available time slots
+- `/admin/appointments` — View all bookings, cancel appointments
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                    # Public landing page
+│   ├── book/page.tsx               # 3-step booking flow
+│   ├── booking-confirmed/page.tsx  # Post-payment success
+│   ├── admin/                      # Protected admin area
+│   │   ├── layout.tsx              # Auth guard
+│   │   ├── page.tsx                # Overview
+│   │   ├── slots/page.tsx          # Slot management
+│   │   ├── appointments/page.tsx   # Appointment list
+│   │   └── login/page.tsx          # Login form
+│   └── api/
+│       ├── auth/[...nextauth]/     # NextAuth handler
+│       ├── slots/                  # GET/POST/DELETE slots
+│       ├── appointments/           # GET/PATCH appointments
+│       └── stripe/
+│           ├── checkout/           # Create Stripe session
+│           └── webhook/            # Handle payment events
+├── components/
+│   ├── layout/                     # Navbar, Footer
+│   ├── landing/                    # All landing sections
+│   ├── booking/                    # DatePicker, TimeSlotPicker, BookingForm
+│   └── admin/                      # SlotManager, AppointmentTable
+├── lib/
+│   ├── supabase.ts
+│   ├── stripe.ts
+│   └── auth.ts
+└── types/index.ts
+```
