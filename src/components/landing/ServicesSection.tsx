@@ -43,7 +43,7 @@ const services = [
   },
 ];
 
-export default function ServicesSection() {
+export default function ServicesSection({ title = "What We Work On" }: { title?: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -57,7 +57,7 @@ export default function ServicesSection() {
             transition={{ duration: 0.5 }}
             className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
           >
-            What We Work On
+            {title}
           </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}

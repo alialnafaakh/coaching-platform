@@ -4,15 +4,32 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const DEFAULT_CONTENT = {
+  general: {
+    siteName: "Maryem",
+    availability: "Accepting New Clients",
+  },
   hero: {
     headline: "The relationship you want starts with one honest session.",
     highlight: "honest",
     subheadline: "Biological, psychological, and social coaching for individuals and couples ready to heal patterns and deepen bonds.",
   },
   about: {
-    imageUrl: "", // We will upload this
+    imageUrl: "",
     text1: "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair.",
     text2: "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins.",
+  },
+  sections: {
+    servicesTitle: "What We Work On",
+    testimonialsTitle: "Stories of Change",
+    pricingTitle: "Investment",
+    pricingFeatures: [
+      "40-minute private session via video",
+      "Personalized biopsychosocial intake",
+      "Session summary & action plan",
+      "Resource recommendations",
+      "Secure, confidential booking",
+      "Follow-up support email",
+    ],
   }
 };
 
@@ -30,7 +47,13 @@ export default function ContentEditor() {
         if (!d.content || Object.keys(d.content).length === 0) {
           setContent(DEFAULT_CONTENT);
         } else {
-          setContent(d.content);
+          // Merge with default to ensure new fields exist
+          setContent({
+            ...DEFAULT_CONTENT,
+            ...d.content,
+            general: { ...DEFAULT_CONTENT.general, ...d.content.general },
+            sections: { ...DEFAULT_CONTENT.sections, ...d.content.sections },
+          });
         }
         setLoading(false);
       });
@@ -120,6 +143,31 @@ export default function ContentEditor() {
       )}
 
       <div className="space-y-8">
+        {/* GENERAL SETTINGS */}
+        <div className="bg-white rounded-2xl p-6 border border-[#e5e0d8]">
+          <h2 className="text-xl font-semibold text-[#1a1a2e] mb-5">General Settings</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Site Name (Logo)</label>
+              <input
+                type="text"
+                value={content.general?.siteName || ""}
+                onChange={(e) => handleChange("general", "siteName", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Availability Status</label>
+              <input
+                type="text"
+                value={content.general?.availability || ""}
+                onChange={(e) => handleChange("general", "availability", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* HERO SECTION */}
         <div className="bg-white rounded-2xl p-6 border border-[#e5e0d8]">
           <h2 className="text-xl font-semibold text-[#1a1a2e] mb-5">Hero Section</h2>
@@ -151,6 +199,50 @@ export default function ContentEditor() {
                 className={`${inputCls} resize-none`}
               />
             </div>
+          </div>
+        </div>
+
+        {/* SECTION TITLES */}
+        <div className="bg-white rounded-2xl p-6 border border-[#e5e0d8]">
+          <h2 className="text-xl font-semibold text-[#1a1a2e] mb-5">Section Titles & Features</h2>
+          <div className="grid md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Services Title</label>
+              <input
+                type="text"
+                value={content.sections?.servicesTitle || ""}
+                onChange={(e) => handleChange("sections", "servicesTitle", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Testimonials Title</label>
+              <input
+                type="text"
+                value={content.sections?.testimonialsTitle || ""}
+                onChange={(e) => handleChange("sections", "testimonialsTitle", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Pricing Title</label>
+              <input
+                type="text"
+                value={content.sections?.pricingTitle || ""}
+                onChange={(e) => handleChange("sections", "pricingTitle", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#6b7280] mb-1.5">Pricing Features (One per line)</label>
+            <textarea
+              rows={6}
+              value={content.sections?.pricingFeatures?.join("\n") || ""}
+              onChange={(e) => handleChange("sections", "pricingFeatures", e.target.value.split("\n"))}
+              className={`${inputCls} resize-none font-mono text-xs`}
+              placeholder="40-minute private session via video..."
+            />
           </div>
         </div>
 

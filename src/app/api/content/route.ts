@@ -25,7 +25,9 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
+  console.log("PUT request received for site content");
   if (!session) {
+    console.error("Unauthorized PUT attempt");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,32 +35,41 @@ export async function PUT(request: Request) {
     const { content } = await request.json();
     const supabase = getSupabaseAdmin();
 
-    // Try to get the first row ID
-    const { data: existing } = await supabase
+    const { data: existing, error: fetchError } = await supabase
       .from("site_content")
       .select("id")
       .limit(1)
       .single();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error("Supabase fetch error:", fetchError);
+      throw fetchError;
+    }
 
     if (existing) {
-      // Update
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("site_content")
         .update({ content, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
       
-      if (error) throw error;
+      if (updateError) {
+        console.error("Supabase update error:", updateError);
+        throw updateError;
+      }
     } else {
-      // Insert
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from("site_content")
         .insert([{ content }]);
         
-      if (error) throw error;
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw insertError;
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("Error updating content:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export default function Footer() {
+export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
   return (
     <footer className="bg-[#1a1a2e] text-white py-12 px-6">
       <div className="max-w-6xl mx-auto">
@@ -10,7 +10,7 @@ export default function Footer() {
               className="text-2xl mb-2"
               style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
             >
-              Maryem
+              {siteName}
             </p>
             <p className="text-sm text-white/50 max-w-xs">
               Biopsychosocial Relationship Coaching — where science meets the
@@ -55,7 +55,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-white/30">
-          <p>© {new Date().getFullYear()} Maryem. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {siteName}. All rights reserved.</p>
           <Link href="/admin" className="hover:text-white/60 transition-colors">
             Admin ↗
           </Link>

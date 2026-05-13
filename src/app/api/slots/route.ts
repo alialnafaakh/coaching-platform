@@ -11,19 +11,26 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date");
   const admin = searchParams.get("admin");
   const db = getSupabaseAdmin();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = db
+      .from("time_slots")
+      .select("*")
+      .order("start_time", { ascending: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query: any = db
-    .from("time_slots")
-    .select("*")
-    .order("start_time", { ascending: true });
+    if (date) query = query.eq("date", date);
+    if (!admin) query = query.eq("is_booked", false);
 
-  if (date) query = query.eq("date", date);
-  if (!admin) query = query.eq("is_booked", false);
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+    const { data, error } = await query;
+    if (error) {
+      console.error("Supabase fetch error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error("Unexpected error during Supabase fetch:", err);
+    return NextResponse.json({ error: err.message || "Unexpected error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -38,14 +45,22 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getSupabaseAdmin();
-  const { data, error } = await db
-    .from("time_slots")
-    .insert({ date, start_time, end_time, is_booked: false })
-    .select()
-    .single();
+  try {
+    const { data, error } = await db
+      .from("time_slots")
+      .insert({ date, start_time, end_time, is_booked: false })
+      .select()
+      .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data, { status: 201 });
+  } catch (err: any) {
+    console.error("Unexpected error during Supabase insert:", err);
+    return NextResponse.json({ error: err.message || "Unexpected error" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {

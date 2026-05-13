@@ -11,7 +11,7 @@ const floatingOrb: Variants = {
   },
 };
 
-export default function HeroSection({ content }: { content?: any }) {
+export default function HeroSection({ content, availability = "Accepting New Clients" }: { content?: any; availability?: string }) {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#faf9f6]">
       {/* Ambient background orbs */}
@@ -41,7 +41,7 @@ export default function HeroSection({ content }: { content?: any }) {
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#0d7377] animate-pulse" />
           <span className="text-xs font-medium text-[#0d7377] tracking-wider uppercase">
-            Accepting New Clients
+            {availability}
           </span>
         </motion.div>
 
@@ -100,27 +100,6 @@ export default function HeroSection({ content }: { content?: any }) {
           </a>
         </motion.div>
 
-        {/* Trust row */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.7 }}
-          className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3"
-        >
-          {[
-            "🧠 Neuroscience-informed",
-            "💬 Trauma-sensitive",
-            "🤝 1-on-1 sessions",
-            "🔒 Strictly confidential",
-          ].map((badge) => (
-            <span
-              key={badge}
-              className="text-sm text-[#6b7280] flex items-center gap-1.5"
-            >
-              {badge}
-            </span>
-          ))}
-        </motion.div>
       </div>
 
       {/* Bottom wave */}

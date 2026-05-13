@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Navbar() {
+export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -39,13 +39,13 @@ export default function Navbar() {
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
             style={{ background: "linear-gradient(135deg, #0d7377, #d4a843)" }}
           >
-            M
+            {siteName.charAt(0)}
           </span>
           <span
             className="font-display text-xl text-[#1a1a2e] tracking-wide"
             style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
           >
-            Maryem
+            {siteName}
           </span>
         </Link>
 

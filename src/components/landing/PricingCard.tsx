@@ -5,7 +5,7 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
 
-const included = [
+const DEFAULT_INCLUDED = [
   "40-minute private session via video",
   "Personalized biopsychosocial intake",
   "Session summary & action plan",
@@ -14,9 +14,11 @@ const included = [
   "Follow-up support email",
 ];
 
-export default function PricingCard() {
+export default function PricingCard({ title = "Investment", features }: { title?: string, features?: string[] }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const included = features && features.length > 0 ? features : DEFAULT_INCLUDED;
 
   return (
     <section id="pricing" ref={ref} className="py-28 px-6 bg-[#f0ede6]">
@@ -27,7 +29,7 @@ export default function PricingCard() {
             animate={inView ? { opacity: 1 } : {}}
             className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
           >
-            Investment
+            {title}
           </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}

@@ -28,7 +28,7 @@ const testimonials = [
   },
 ];
 
-export default function TestimonialsSection() {
+export default function TestimonialsSection({ title = "Stories of Change" }: { title?: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -41,7 +41,7 @@ export default function TestimonialsSection() {
             animate={inView ? { opacity: 1 } : {}}
             className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
           >
-            Stories of Change
+            {title}
           </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
