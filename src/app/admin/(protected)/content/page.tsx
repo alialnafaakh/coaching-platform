@@ -59,7 +59,7 @@ export default function ContentEditor() {
       });
   }, []);
 
-  const handleChange = (section: string, field: string, value: string) => {
+  const handleChange = (section: string, field: string, value: any) => {
     setContent((prev: any) => ({
       ...prev,
       [section]: {
