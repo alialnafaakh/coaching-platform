@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 export async function GET() {
   const supabase = getSupabaseAdmin();
@@ -66,7 +67,8 @@ export async function PUT(request: Request) {
         throw insertError;
       }
     }
-
+    
+    revalidatePath("/");
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Error updating content:", error);

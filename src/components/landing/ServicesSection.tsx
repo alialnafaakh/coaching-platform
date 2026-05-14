@@ -43,7 +43,10 @@ const services = [
   },
 ];
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function ServicesSection({ title = "What We Work On" }: { title?: string }) {
+  const { isRtl } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -51,31 +54,24 @@ export default function ServicesSection({ title = "What We Work On" }: { title?:
     <section id="services" ref={ref} className="py-28 px-6 bg-[#faf9f6]">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.5 }}
-            className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
-          >
-            {title}
-          </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl text-[#1a1a2e]"
-            style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+            transition={{ duration: 0.6 }}
+            className={`text-4xl md:text-5xl text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
+            style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            Areas of focus
+            {title}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-4 text-[#6b7280] max-w-xl mx-auto text-base"
+            className={`mt-4 text-[#6b7280] max-w-xl mx-auto text-base ${isRtl ? "font-arabic" : ""}`}
           >
-            Every session is tailored to where you are. These are the threads we
-            most often weave together.
+            {isRtl 
+              ? "كل جلسة مصممة خصيصًا لمكانك الحالي. هذه هي الخيوط التي ننسجها معًا في أغلب الأحيان."
+              : "Every session is tailored to where you are. These are the threads we most often weave together."}
           </motion.p>
         </div>
 

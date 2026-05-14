@@ -28,9 +28,14 @@ const testimonials = [
   },
 ];
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function TestimonialsSection({ title = "Stories of Change" }: { title?: string }) {
+  const { isRtl, t } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const testimonialsData = t("testimonials_data") as unknown as any[];
 
   return (
     <section id="testimonials" ref={ref} className="py-28 px-6 bg-[#faf9f6]">
@@ -39,7 +44,7 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
           <motion.p
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
-            className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
+            className={`text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4 ${isRtl ? "font-arabic" : ""}`}
           >
             {title}
           </motion.p>
@@ -47,45 +52,45 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl text-[#1a1a2e]"
-            style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+            className={`text-4xl md:text-5xl text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
+            style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            What clients say
+            {t("what_clients_say")}
           </motion.h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
+        <div className={`grid md:grid-cols-3 gap-6 ${isRtl ? "rtl" : "ltr"}`}>
+          {testimonialsData.map((item, i) => (
             <motion.div
-              key={t.name}
+              key={item.name}
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.55, delay: 0.1 + i * 0.15 }}
-              className="bg-white rounded-2xl p-7 border border-[#e5e0d8] flex flex-col gap-5 hover:shadow-md transition-shadow duration-300"
+              className={`bg-white rounded-2xl p-7 border border-[#e5e0d8] flex flex-col gap-5 hover:shadow-md transition-shadow duration-300 ${isRtl ? "text-right" : "text-left"}`}
             >
               {/* Stars */}
-              <div className="flex gap-0.5">
-                {Array.from({ length: t.stars }).map((_, idx) => (
+              <div className={`flex gap-0.5 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
+                {[1, 2, 3, 4, 5].map((idx) => (
                   <span key={idx} className="text-[#d4a843] text-sm">★</span>
                 ))}
               </div>
 
               {/* Quote */}
-              <blockquote className="text-sm text-[#374151] leading-relaxed flex-1">
-                &ldquo;{t.quote}&rdquo;
+              <blockquote className={`text-sm text-[#374151] leading-relaxed flex-1 ${isRtl ? "font-arabic" : ""}`}>
+                {isRtl ? "«" : "“"}{item.quote}{isRtl ? "»" : "”"}
               </blockquote>
 
               {/* Author */}
-              <div className="flex items-center gap-3 pt-2 border-t border-[#f3f0ea]">
+              <div className={`flex items-center gap-3 pt-2 border-t border-[#f3f0ea] ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
                   style={{ background: "linear-gradient(135deg, #0d7377, #d4a843)" }}
                 >
-                  {t.name.charAt(0)}
+                  {item.name.charAt(0)}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-[#1a1a2e]">{t.name}</p>
-                  <p className="text-xs text-[#9ca3af]">{t.role}</p>
+                <div className={isRtl ? "text-right" : "text-left"}>
+                  <p className={`text-sm font-medium text-[#1a1a2e] ${isRtl ? "font-arabic" : ""}`}>{item.name}</p>
+                  <p className={`text-xs text-[#9ca3af] ${isRtl ? "font-arabic" : ""}`}>{item.role}</p>
                 </div>
               </div>
             </motion.div>

@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { LanguageProvider } from "@/context/LanguageContext";
+
 export default function RootLayout({
   children,
 }: {
@@ -35,7 +37,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
+      </body>
     </html>
   );
 }

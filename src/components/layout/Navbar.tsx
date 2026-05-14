@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useLanguage } from "@/context/LanguageContext";
+import LanguageSwitcher from "./LanguageSwitcher";
+
 export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
+  const { isRtl, t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -15,10 +19,10 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
   }, []);
 
   const links = [
-    { href: "#about", label: "About" },
-    { href: "#services", label: "Services" },
-    { href: "#testimonials", label: "Testimonials" },
-    { href: "#pricing", label: "Pricing" },
+    { href: "#about", label: t("about") },
+    { href: "#services", label: t("services") },
+    { href: "#testimonials", label: t("testimonials") },
+    { href: "#pricing", label: t("pricing") },
   ];
 
   return (
@@ -60,13 +64,16 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
               {l.label}
             </a>
           ))}
-          <Link
-            href="/book"
-            className="px-5 py-2 rounded-full text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
-            style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
-          >
-            Book a Session
-          </Link>
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <Link
+              href="/book"
+              className="px-5 py-2 rounded-full text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
+              style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+            >
+              {t("book_session")} {isRtl ? "←" : "→"}
+            </Link>
+          </div>
         </nav>
 
         {/* Mobile hamburger */}
@@ -99,6 +106,10 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
             className="md:hidden bg-white border-b border-[#e5e0d8] overflow-hidden"
           >
             <div className="px-6 py-4 flex flex-col gap-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">Language / اللغة</span>
+                <LanguageSwitcher />
+              </div>
               {links.map((l) => (
                 <a
                   key={l.href}
@@ -115,7 +126,7 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
                 className="w-full text-center px-5 py-2 rounded-full text-sm font-medium text-white"
                 style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
               >
-                Book a Session
+                {t("book_session")} {isRtl ? "←" : "→"}
               </Link>
             </div>
           </motion.div>

@@ -11,14 +11,18 @@ const floatingOrb: Variants = {
   },
 };
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function HeroSection({ content, availability = "Accepting New Clients" }: { content?: any; availability?: string }) {
+  const { isRtl, t } = useLanguage();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#faf9f6]">
       {/* Ambient background orbs */}
       <motion.div
         variants={floatingOrb}
         animate="animate"
-        className="absolute top-20 right-10 w-80 h-80 rounded-full blur-3xl opacity-20"
+        className={`absolute top-20 ${isRtl ? "left-10" : "right-10"} w-80 h-80 rounded-full blur-3xl opacity-20`}
         style={{ background: "radial-gradient(circle, #0d7377, transparent)" }}
       />
       <motion.div
@@ -28,7 +32,7 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           background: "radial-gradient(circle, #d4a843, transparent)",
           animationDelay: "3s",
         }}
-        className="absolute bottom-20 left-10 w-64 h-64 rounded-full blur-3xl opacity-15"
+        className={`absolute bottom-20 ${isRtl ? "right-10" : "left-10"} w-64 h-64 rounded-full blur-3xl opacity-15`}
       />
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-24 pb-16">
@@ -40,7 +44,7 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-[#0d7377]/8 border border-[#0d7377]/20"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#0d7377] animate-pulse" />
-          <span className="text-xs font-medium text-[#0d7377] tracking-wider uppercase">
+          <span className={`text-xs font-medium text-[#0d7377] tracking-wider uppercase ${isRtl ? "font-arabic" : ""}`}>
             {availability}
           </span>
         </motion.div>
@@ -50,10 +54,10 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="text-5xl md:text-7xl leading-tight mb-6 text-[#1a1a2e]"
-          style={{ fontFamily: "Cormorant Garamond, Georgia, serif", fontWeight: 400 }}
+          className={`text-5xl md:text-7xl leading-tight mb-6 text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
+          style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif", fontWeight: isRtl ? 700 : 400 }}
         >
-          {content?.headline?.split(content?.highlight || "")[0] || "Heal the patterns. "}
+          {content?.headline?.split(content?.highlight || "")[0] || ""}
           <em
             className="not-italic"
             style={{
@@ -63,7 +67,7 @@ export default function HeroSection({ content, availability = "Accepting New Cli
               backgroundClip: "text",
             }}
           >
-            {content?.highlight || "Deepen the bond."}
+            {content?.highlight || ""}
           </em>
           {content?.headline?.split(content?.highlight || "")[1] || ""}
         </motion.h1>
@@ -73,9 +77,9 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-lg md:text-xl text-[#6b7280] max-w-2xl mx-auto mb-10 leading-relaxed"
+          className={`text-lg md:text-xl text-[#6b7280] max-w-2xl mx-auto mb-10 leading-relaxed ${isRtl ? "font-arabic" : ""}`}
         >
-          {content?.subheadline || "Biopsychosocial coaching that weaves your biology, your story, and your social world into lasting, compassionate change — in yourself and your relationships."}
+          {content?.subheadline || ""}
         </motion.p>
 
         {/* CTA buttons */}
@@ -87,19 +91,18 @@ export default function HeroSection({ content, availability = "Accepting New Cli
         >
           <Link
             href="/book"
-            className="px-8 py-4 rounded-full text-base font-medium text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
+            className={`px-8 py-4 rounded-full text-base font-medium text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 ${isRtl ? "font-arabic" : ""}`}
             style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
           >
-            Book Your Session — $50
+            {t("book_now")} {isRtl ? "←" : "→"}
           </Link>
           <a
             href="#about"
-            className="px-8 py-4 rounded-full text-base font-medium text-[#0d7377] border border-[#0d7377]/30 hover:bg-[#0d7377]/5 transition-all duration-200"
+            className={`px-8 py-4 rounded-full text-base font-medium text-[#0d7377] border border-[#0d7377]/30 hover:bg-[#0d7377]/5 transition-all duration-200 ${isRtl ? "font-arabic" : ""}`}
           >
-            Learn More ↓
+            {t("learn_more")} {isRtl ? "↑" : "↓"}
           </a>
         </motion.div>
-
       </div>
 
       {/* Bottom wave */}

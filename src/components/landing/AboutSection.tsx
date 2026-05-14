@@ -12,9 +12,14 @@ const fadeUp: Variants = {
   }),
 };
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function AboutSection({ content }: { content?: any }) {
+  const { isRtl, t } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
+
+  const tags = t("tags") as unknown as string[];
 
   return (
     <section id="about" ref={ref} className="py-28 px-6 bg-[#f0ede6]">
@@ -37,15 +42,17 @@ export default function AboutSection({ content }: { content?: any }) {
             {content?.imageUrl ? (
               <img src={content.imageUrl} alt="About Maryem" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-end p-8">
+              <div className={`w-full h-full flex items-end p-8 ${isRtl ? "text-right" : "text-left"}`}>
                 <div className="text-white">
                   <p
-                    className="text-6xl mb-2"
-                    style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+                    className={`text-6xl mb-2 ${isRtl ? "font-arabic-display" : ""}`}
+                    style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
                   >
-                    M.
+                    {isRtl ? "م." : "M."}
                   </p>
-                  <p className="text-white/70 text-sm">Certified Coach · BPS Practitioner</p>
+                  <p className={`text-white/70 text-sm ${isRtl ? "font-arabic" : ""}`}>
+                    {isRtl ? "كوتش معتمدة · ممارسة بيولوجية نفسية اجتماعية" : "Certified Coach · BPS Practitioner"}
+                  </p>
                 </div>
               </div>
             )}
@@ -53,38 +60,42 @@ export default function AboutSection({ content }: { content?: any }) {
 
           {/* Floating credential card */}
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
+            initial={{ opacity: 0, x: isRtl ? -40 : 40 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.5 }}
-            className="absolute -right-6 top-12 bg-white rounded-2xl p-5 shadow-xl max-w-[180px]"
+            className={`absolute ${isRtl ? "-left-6" : "-right-6"} top-12 bg-white rounded-2xl p-5 shadow-xl max-w-[180px] ${isRtl ? "text-right" : "text-left"}`}
           >
-            <p className="text-3xl font-semibold text-[#0d7377]">200+</p>
-            <p className="text-xs text-[#6b7280] mt-0.5">
-              lives transformed through compassionate coaching
+            <p className={`text-3xl font-semibold text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
+              {isRtl ? "+200" : "200+"}
+            </p>
+            <p className={`text-xs text-[#6b7280] mt-0.5 ${isRtl ? "font-arabic" : ""}`}>
+              {t("lives_transformed")}
             </p>
           </motion.div>
 
           {/* Floating badge */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: isRtl ? 30 : -30 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.65 }}
-            className="absolute -left-4 bottom-16 bg-[#1a1a2e] text-white rounded-2xl px-4 py-3 shadow-xl"
+            className={`absolute ${isRtl ? "-right-4" : "-left-4"} bottom-16 bg-[#1a1a2e] text-white rounded-2xl px-4 py-3 shadow-xl ${isRtl ? "text-right" : "text-left"}`}
           >
-            <p className="text-xs font-medium">⭐ 5.0 · Avg. client rating</p>
+            <p className={`text-xs font-medium ${isRtl ? "font-arabic" : ""}`}>
+              {isRtl ? "⭐ 5.0 · متوسط تقييم العملاء" : `⭐ 5.0 · ${t("client_rating")}`}
+            </p>
           </motion.div>
         </motion.div>
 
         {/* Text */}
-        <div>
+        <div className={isRtl ? "text-right" : "text-left"}>
           <motion.p
             custom={1}
             variants={fadeUp}
             initial="hidden"
             animate={inView ? "visible" : "hidden"}
-            className="text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4"
+            className={`text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4 ${isRtl ? "font-arabic" : ""}`}
           >
-            About Maryem
+            {t("about_maryem")}
           </motion.p>
 
           <motion.h2
@@ -92,10 +103,10 @@ export default function AboutSection({ content }: { content?: any }) {
             variants={fadeUp}
             initial="hidden"
             animate={inView ? "visible" : "hidden"}
-            className="text-4xl md:text-5xl text-[#1a1a2e] mb-6 leading-tight"
-            style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+            className={`text-4xl md:text-5xl text-[#1a1a2e] mb-6 leading-tight ${isRtl ? "font-arabic-display" : ""}`}
+            style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            Relationships are{" "}
+            {t("about_headline").split(t("about_highlight"))[0]}
             <span
               style={{
                 background: "linear-gradient(135deg, #0d7377, #d4a843)",
@@ -104,9 +115,9 @@ export default function AboutSection({ content }: { content?: any }) {
                 backgroundClip: "text",
               }}
             >
-              biological,
-            </span>{" "}
-            psychological, and social — all at once.
+              {t("about_highlight")}
+            </span>
+            {t("about_headline").split(t("about_highlight"))[1]}
           </motion.h2>
 
           <motion.p
@@ -114,9 +125,9 @@ export default function AboutSection({ content }: { content?: any }) {
             variants={fadeUp}
             initial="hidden"
             animate={inView ? "visible" : "hidden"}
-            className="text-[#6b7280] text-base leading-relaxed mb-5"
+            className={`text-[#6b7280] text-base leading-relaxed mb-5 ${isRtl ? "font-arabic" : ""}`}
           >
-            {content?.text1 || "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair."}
+            {content?.text1 || ""}
           </motion.p>
 
           <motion.p
@@ -124,9 +135,9 @@ export default function AboutSection({ content }: { content?: any }) {
             variants={fadeUp}
             initial="hidden"
             animate={inView ? "visible" : "hidden"}
-            className="text-[#6b7280] text-base leading-relaxed mb-8"
+            className={`text-[#6b7280] text-base leading-relaxed mb-8 ${isRtl ? "font-arabic" : ""}`}
           >
-            {content?.text2 || "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins."}
+            {content?.text2 || ""}
           </motion.p>
 
           <motion.div
@@ -134,18 +145,12 @@ export default function AboutSection({ content }: { content?: any }) {
             variants={fadeUp}
             initial="hidden"
             animate={inView ? "visible" : "hidden"}
-            className="flex flex-wrap gap-3"
+            className={`flex flex-wrap gap-3 ${isRtl ? "justify-end" : "justify-start"}`}
           >
-            {[
-              "Attachment Theory",
-              "Somatic Coaching",
-              "Systemic Therapy",
-              "Emotion Regulation",
-              "Communication",
-            ].map((tag) => (
+            {tags.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1.5 rounded-full text-xs font-medium text-[#0d7377] bg-[#0d7377]/8 border border-[#0d7377]/20"
+                className={`px-3 py-1.5 rounded-full text-xs font-medium text-[#0d7377] bg-[#0d7377]/8 border border-[#0d7377]/20 ${isRtl ? "font-arabic" : ""}`}
               >
                 {tag}
               </span>
