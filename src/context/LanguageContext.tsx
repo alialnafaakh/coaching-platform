@@ -8,12 +8,12 @@ interface LanguageContextType {
   lang: Language;
   setLang: (lang: Language) => void;
   isRtl: boolean;
-  t: (key: string) => string;
+  t: (key: string) => any;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const UI_STRINGS: Record<Language, Record<string, string>> = {
+const UI_STRINGS: Record<Language, Record<string, any>> = {
   en: {
     book_session: "Book a Session",
     book_now: "Book Your Session — $50",
@@ -114,6 +114,13 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     change_time: "Change time",
     no_slots_for: "No available slots for",
     choose_another_date: "Please choose another date.",
+    booked_headline: "You're booked!",
+    booked_subheadline: "Your session is confirmed. You'll receive a confirmation email shortly. I look forward to meeting you and exploring this work together.",
+    whats_next: "What's next?",
+    check_inbox: "Check your inbox for a confirmation email",
+    add_calendar: "Add the session to your calendar",
+    intake_sent: "A brief intake questionnaire will be sent to you",
+    back_home: "Back to Home",
   },
   ar: {
     book_session: "احجز جلسة",
@@ -215,6 +222,13 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     change_time: "تغيير الوقت",
     no_slots_for: "لا توجد مواعيد متاحة ليوم",
     choose_another_date: "يرجى اختيار تاريخ آخر.",
+    booked_headline: "تم الحجز بنجاح!",
+    booked_subheadline: "تم تأكيد جلستك. ستصلك رسالة تأكيد عبر البريد الإلكتروني قريبًا. أتطلع إلى لقائك واستكشاف هذا العمل معًا.",
+    whats_next: "ماذا بعد؟",
+    check_inbox: "تحقق من بريدك الإلكتروني للحصول على رسالة التأكيد",
+    add_calendar: "أضف الجلسة إلى تقويمك",
+    intake_sent: "سيتم إرسال استبيان موجز إليك",
+    back_home: "العودة للرئيسية",
   }
 };
 

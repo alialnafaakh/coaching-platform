@@ -1,12 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function BookingConfirmedPage() {
+  const { isRtl, t } = useLanguage();
+
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[#faf9f6] flex items-center justify-center px-6 pt-20">
+      <main className={`min-h-screen bg-[#faf9f6] flex items-center justify-center px-6 pt-20 ${isRtl ? "text-right" : "text-left"}`}>
         <div className="max-w-md text-center">
           {/* Checkmark */}
           <div
@@ -17,33 +22,31 @@ export default function BookingConfirmedPage() {
           </div>
 
           <h1
-            className="text-4xl text-[#1a1a2e] mb-4"
-            style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+            className={`text-4xl text-[#1a1a2e] mb-4 ${isRtl ? "font-arabic-display" : ""}`}
+            style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            You&apos;re booked!
+            {t("booked_headline")}
           </h1>
 
-          <p className="text-[#6b7280] text-base leading-relaxed mb-8">
-            Your session is confirmed. You&apos;ll receive a confirmation email
-            shortly. I look forward to meeting you and exploring this work
-            together.
+          <p className={`text-[#6b7280] text-base leading-relaxed mb-8 ${isRtl ? "font-arabic" : ""}`}>
+            {t("booked_subheadline")}
           </p>
 
-          <div className="p-5 rounded-2xl bg-[#0d7377]/6 border border-[#0d7377]/15 mb-8 text-left">
-            <p className="text-sm font-medium text-[#0d7377] mb-1">What&apos;s next?</p>
-            <ul className="text-sm text-[#6b7280] space-y-1">
-              <li>✉️ Check your inbox for a confirmation email</li>
-              <li>📅 Add the session to your calendar</li>
-              <li>📝 A brief intake questionnaire will be sent to you</li>
+          <div className={`p-5 rounded-2xl bg-[#0d7377]/6 border border-[#0d7377]/15 mb-8 ${isRtl ? "text-right" : "text-left"}`}>
+            <p className={`text-sm font-medium text-[#0d7377] mb-1 ${isRtl ? "font-arabic" : ""}`}>{t("whats_next")}</p>
+            <ul className={`text-sm text-[#6b7280] space-y-1 ${isRtl ? "font-arabic" : ""}`}>
+              <li>{isRtl ? "✉️ تحقق من بريدك الإلكتروني للحصول على رسالة التأكيد" : `✉️ ${t("check_inbox")}`}</li>
+              <li>{isRtl ? "📅 أضف الجلسة إلى تقويمك" : `📅 ${t("add_calendar")}`}</li>
+              <li>{isRtl ? "📝 سيتم إرسال استبيان موجز إليك" : `📝 ${t("intake_sent")}`}</li>
             </ul>
           </div>
 
           <Link
             href="/"
-            className="inline-block px-8 py-3 rounded-full text-sm font-medium text-white"
+            className={`inline-block px-8 py-3 rounded-full text-sm font-medium text-white ${isRtl ? "font-arabic" : ""}`}
             style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
           >
-            Back to Home
+            {t("back_home")}
           </Link>
         </div>
       </main>
