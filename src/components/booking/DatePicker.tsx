@@ -3,6 +3,8 @@
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { addDays, startOfDay } from "date-fns";
+import { ar } from "date-fns/locale";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   selected: Date | undefined;
@@ -10,11 +12,12 @@ interface Props {
 }
 
 export default function BookingDatePicker({ selected, onSelect }: Props) {
+  const { lang, isRtl } = useLanguage();
   // Block today and all past dates — minimum is tomorrow
   const tomorrow = startOfDay(addDays(new Date(), 1));
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center" dir={isRtl ? "rtl" : "ltr"}>
       <DayPicker
         mode="single"
         selected={selected}
@@ -23,6 +26,8 @@ export default function BookingDatePicker({ selected, onSelect }: Props) {
         startMonth={tomorrow}
         showOutsideDays
         className="rdp-root"
+        locale={lang === "ar" ? ar : undefined}
+        dir={isRtl ? "rtl" : "ltr"}
       />
     </div>
   );

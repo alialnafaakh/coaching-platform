@@ -44,6 +44,38 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     lives_transformed: "lives transformed through compassionate coaching",
     client_rating: "Avg. client rating",
     tags: ["Attachment Theory", "Somatic Coaching", "Systemic Therapy", "Emotion Regulation", "Communication"],
+    services_data: [
+      {
+        icon: "🧠",
+        title: "Biopsychosocial Assessment",
+        description: "We begin by mapping the full picture — your nervous system patterns, your relational history, and the social forces shaping your connections today.",
+      },
+      {
+        icon: "💞",
+        title: "Couples & Partnership Coaching",
+        description: "For partners ready to break old cycles. We work on communication, repair, and building a secure attachment — together.",
+      },
+      {
+        icon: "🌱",
+        title: "Individual Relationship Coaching",
+        description: "For those navigating loneliness, dating, divorce, or the aftermath of a difficult relationship. You don't have to figure it out alone.",
+      },
+      {
+        icon: "🔄",
+        title: "Pattern Interruption",
+        description: "Deep-rooted patterns live in the body. Somatic-informed techniques help you notice, interrupt, and rewire reactive cycles at the source.",
+      },
+      {
+        icon: "🗣️",
+        title: "Communication Mastery",
+        description: "Learn to express needs clearly, listen without defensiveness, and have the conversations you've been avoiding — with skill and care.",
+      },
+      {
+        icon: "🛡️",
+        title: "Boundaries & Self-worth",
+        description: "Understand why boundaries collapse — and rebuild them from a place of self-respect, not fear. Healthy limits are an act of love.",
+      },
+    ],
     what_clients_say: "What clients say",
     testimonials_data: [
       {
@@ -73,6 +105,15 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     booking_email_placeholder: "you@example.com",
     minute_session: "40-minute session",
     error_generic: "Something went wrong. Please try again.",
+    choose_date: "Choose Date",
+    choose_time: "Choose Time",
+    your_details: "Your Details",
+    select_date_info: "Select a date — available from tomorrow onwards",
+    available_times: "Available times on",
+    istanbul_time: "All times are in Istanbul Time (TRT).",
+    change_time: "Change time",
+    no_slots_for: "No available slots for",
+    choose_another_date: "Please choose another date.",
   },
   ar: {
     book_session: "احجز جلسة",
@@ -104,6 +145,38 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     lives_transformed: "حياة تحولت من خلال الكوتشينج الرحيم",
     client_rating: "متوسط تقييم العملاء",
     tags: ["نظرية التعلق", "الكوتشينج الجسدي", "العلاج النظامي", "تنظيم المشاعر", "التواصل"],
+    services_data: [
+      {
+        icon: "🧠",
+        title: "التقييم البيولوجي النفسي الاجتماعي",
+        description: "بدأنا برسم الصورة الكاملة — أنماط جهازك العصبي، وتاريخك العلائقي، والقوى الاجتماعية التي تشكل روابطك اليوم.",
+      },
+      {
+        icon: "💞",
+        title: "كوتشينج الأزواج والشركاء",
+        description: "للشركاء المستعدين لكسر الدورات القديمة. نعمل على التواصل والإصلاح وبناء تعلق آمن — معًا.",
+      },
+      {
+        icon: "🌱",
+        title: "كوتشينج العلاقات الفردي",
+        description: "لأولئك الذين يعانون من الوحدة، أو المواعدة، أو الطلاق، أو آثار علاقة صعبة. ليس عليك مواجهة الأمر بمفردك.",
+      },
+      {
+        icon: "🔄",
+        title: "مقاطعة الأنماط",
+        description: "الأنماط العميقة تعيش في الجسد. تساعدك تقنيات الوعي الجسدي على ملاحظة ومقاطعة وإعادة توصيل الدورات التفاعلية من المصدر.",
+      },
+      {
+        icon: "🗣️",
+        title: "إتقان التواصل",
+        description: "تعلمي التعبير عن الاحتياجات بوضوح، والاستماع دون دفاعية، وإجراء المحادثات التي كنت تتجنبينها — بمهارة ورعاية.",
+      },
+      {
+        icon: "🛡️",
+        title: "الحدود وتقدير الذات",
+        description: "فهم لماذا تنهار الحدود — وإعادة بنائها من مكان يحترم الذات، وليس من الخوف. الحدود الصحية هي فعل حب.",
+      },
+    ],
     what_clients_say: "ماذا يقول العملاء",
     testimonials_data: [
       {
@@ -133,6 +206,15 @@ const UI_STRINGS: Record<Language, Record<string, string>> = {
     booking_email_placeholder: "you@example.com",
     minute_session: "جلسة لمدة 40 دقيقة",
     error_generic: "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    choose_date: "اختر التاريخ",
+    choose_time: "اختر الوقت",
+    your_details: "بياناتك",
+    select_date_info: "اختر تاريخًا — متاح بدءًا من الغد",
+    available_times: "الأوقات المتاحة في",
+    istanbul_time: "جميع الأوقات بتوقيت اسطنبول (TRT).",
+    change_time: "تغيير الوقت",
+    no_slots_for: "لا توجد مواعيد متاحة ليوم",
+    choose_another_date: "يرجى اختيار تاريخ آخر.",
   }
 };
 

@@ -11,7 +11,10 @@ interface Props {
   onSelect: (slot: TimeSlot) => void;
 }
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function TimeSlotPicker({ date, selectedSlot, onSelect }: Props) {
+  const { isRtl, t, lang } = useLanguage();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,14 +38,21 @@ export default function TimeSlotPicker({ date, selectedSlot, onSelect }: Props) 
     );
   }
 
+  const formatDate = (d: Date) => {
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", {
+      month: "long",
+      day: "numeric",
+    }).format(d);
+  };
+
   if (slots.length === 0) {
     return (
-      <div className="text-center py-10 text-[#9ca3af] text-sm">
-        No available slots for{" "}
+      <div className={`text-center py-10 text-[#9ca3af] text-sm ${isRtl ? "font-arabic" : ""}`}>
+        {t("no_slots_for")}{" "}
         <span className="font-medium text-[#6b7280]">
-          {format(date, "MMMM d")}
+          {formatDate(date)}
         </span>
-        . Please choose another date.
+        . {t("choose_another_date")}
       </div>
     );
   }

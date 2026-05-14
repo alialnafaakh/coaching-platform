@@ -46,8 +46,8 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
             {siteName.charAt(0)}
           </span>
           <span
-            className="font-display text-xl text-[#1a1a2e] tracking-wide"
-            style={{ fontFamily: "Cormorant Garamond, Georgia, serif" }}
+            className={`font-display text-xl text-[#1a1a2e] tracking-wide ${isRtl ? "font-arabic-display" : ""}`}
+            style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
             {siteName}
           </span>

@@ -46,9 +46,11 @@ const services = [
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function ServicesSection({ title = "What We Work On" }: { title?: string }) {
-  const { isRtl } = useLanguage();
+  const { isRtl, t } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const servicesData = t("services_data") as unknown as any[];
 
   return (
     <section id="services" ref={ref} className="py-28 px-6 bg-[#faf9f6]">
@@ -75,24 +77,24 @@ export default function ServicesSection({ title = "What We Work On" }: { title?:
           </motion.p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((s, i) => (
+        <div className={`grid md:grid-cols-2 lg:grid-cols-3 gap-6 ${isRtl ? "rtl" : "ltr"}`}>
+          {servicesData.map((s, i) => (
             <motion.div
               key={s.title}
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.1 + i * 0.1 }}
               whileHover={{ y: -4 }}
-              className="bg-white rounded-2xl p-7 border border-[#e5e0d8] hover:border-[#0d7377]/30 hover:shadow-lg transition-all duration-300 group"
+              className={`bg-white rounded-2xl p-7 border border-[#e5e0d8] hover:border-[#0d7377]/30 hover:shadow-lg transition-all duration-300 group ${isRtl ? "text-right" : "text-left"}`}
             >
-              <span className="text-3xl mb-4 block">{s.icon}</span>
+              <span className={`text-3xl mb-4 block ${isRtl ? "text-right" : "text-left"}`}>{s.icon}</span>
               <h3
-                className="text-lg text-[#1a1a2e] mb-3 group-hover:text-[#0d7377] transition-colors"
-                style={{ fontFamily: "Cormorant Garamond, Georgia, serif", fontWeight: 500 }}
+                className={`text-lg text-[#1a1a2e] mb-3 group-hover:text-[#0d7377] transition-colors ${isRtl ? "font-arabic-display" : ""}`}
+                style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif", fontWeight: isRtl ? 700 : 500 }}
               >
                 {s.title}
               </h3>
-              <p className="text-sm text-[#6b7280] leading-relaxed">
+              <p className={`text-sm text-[#6b7280] leading-relaxed ${isRtl ? "font-arabic" : ""}`}>
                 {s.description}
               </p>
             </motion.div>
