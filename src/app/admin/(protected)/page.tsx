@@ -20,10 +20,10 @@ export default function AdminOverviewPage() {
         >
           <p className="text-3xl mb-3">🗓</p>
           <p className="font-semibold text-[#1a1a2e] group-hover:text-[#0d7377] transition-colors">
-            Manage Time Slots
+            Open Booking Times
           </p>
           <p className="text-sm text-[#9ca3af] mt-1">
-            Add or remove available booking slots
+            Click hours to make them available for clients
           </p>
         </Link>
 
@@ -44,8 +44,8 @@ export default function AdminOverviewPage() {
       <div className="bg-[#0d7377]/6 rounded-2xl p-5 border border-[#0d7377]/15">
         <p className="text-sm font-medium text-[#0d7377] mb-1">💡 Quick Tip</p>
         <p className="text-sm text-[#6b7280]">
-          Add time slots a few days in advance so clients can book. Clients can
-          only book starting from tomorrow — same-day booking is disabled.
+          Click a day, then click the hours you want. Use “Copy this day → next 7 days”
+          to open a whole week in one step. Clients can book from tomorrow onward.
         </p>
       </div>
     </div>

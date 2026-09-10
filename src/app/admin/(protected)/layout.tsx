@@ -21,7 +21,7 @@ export default async function AdminProtectedLayout({
 
   const navItems = [
     { href: "/admin", label: "📊 Overview" },
-    { href: "/admin/slots", label: "🗓 Manage Slots" },
+    { href: "/admin/slots", label: "🗓 Booking Times" },
     { href: "/admin/appointments", label: "📋 Appointments" },
     { href: "/admin/content", label: "📝 Edit Content" },
   ];
