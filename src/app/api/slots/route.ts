@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { expireExpiredHolds } from "@/lib/bookings";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
   const admin = searchParams.get("admin");
   const db = getSupabaseAdmin();
   try {
+    await expireExpiredHolds(db);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query: any = db
       .from("time_slots")
@@ -40,12 +42,12 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query;
     if (error) {
       console.error("Supabase fetch error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });
     }
     return NextResponse.json(data);
-  } catch (err: any) {
+  } catch (err) {
     console.error("Unexpected error during Supabase fetch:", err);
-    return NextResponse.json({ error: err.message || "Unexpected error" }, { status: 500 });
+    return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });
   }
 }
 

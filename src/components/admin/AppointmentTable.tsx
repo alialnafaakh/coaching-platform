@@ -7,9 +7,30 @@ import { motion } from "framer-motion";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  pending_payment: "bg-amber-50 text-amber-700 border-amber-200",
   pending: "bg-amber-50 text-amber-700 border-amber-200",
+  pending_qi_payment: "bg-amber-50 text-amber-700 border-amber-200",
+  in_progress: "bg-sky-50 text-sky-700 border-sky-200",
+  completed: "bg-slate-50 text-slate-600 border-slate-200",
   cancelled: "bg-red-50 text-red-500 border-red-200",
 };
+
+const PAYMENT_STYLES: Record<string, string> = {
+  unpaid: "bg-amber-50 text-amber-700 border-amber-200",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  failed: "bg-red-50 text-red-500 border-red-200",
+};
+
+function consultationLabel(status: string) {
+  if (status === "in_progress") return "In progress";
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Not started";
+  return "Scheduled";
+}
+
+function statusLabel(status: string) {
+  return status.replaceAll("_", " ");
+}
 
 export default function AppointmentTable() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -97,16 +118,26 @@ export default function AppointmentTable() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
                 <span
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${
-                    STATUS_STYLES[appt.status] ?? ""
+                    STATUS_STYLES[appt.status] ?? "bg-[#f0ede6] text-[#6b7280] border-[#e5e0d8]"
                   }`}
                 >
-                  {appt.status}
+                  {statusLabel(appt.status)}
+                </span>
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${
+                    PAYMENT_STYLES[appt.payment_status] ?? "bg-[#f0ede6] text-[#6b7280] border-[#e5e0d8]"
+                  }`}
+                >
+                  {statusLabel(appt.payment_status || "unpaid")}
+                </span>
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium border bg-[#faf9f6] text-[#6b7280] border-[#e5e0d8]">
+                  {consultationLabel(appt.status)}
                 </span>
 
-                {appt.status !== "cancelled" && (
+                {appt.status !== "cancelled" && appt.status !== "completed" && (
                   <button
                     onClick={() => handleCancel(appt.id)}
                     disabled={cancelling === appt.id}
