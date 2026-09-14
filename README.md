@@ -1,12 +1,13 @@
 # Maryem — Biopsychosocial Relationship Coaching Site
 
-A full-stack Next.js 15 coaching website with:
+A full-stack Next.js coaching website with:
 - **Landing page** (Hero, About, Services, Testimonials, Pricing, CTA)
-- **Booking flow** (Date picker → Time slot → Contact form → Stripe Checkout)
+- **Booking flow** (Date picker → Time slot → Contact form → pending payment hold)
 - **Admin dashboard** (Slot management + Appointment tracking)
-- **Stripe** payments ($50 after 50% discount)
 - **Supabase** (PostgreSQL) database
 - **NextAuth** credentials-based admin auth
+
+Online payment (WayL) will be connected in a later phase. Bookings currently reserve a slot as `pending_payment` / `unpaid`.
 
 ---
 
@@ -30,9 +31,6 @@ Copy `.env.local` and fill in all values:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API keys |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Developers → Webhooks (after creating endpoint) |
 | `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | Your Vercel URL (e.g. `https://maryem.vercel.app`) |
 | `ADMIN_USERNAME` | Your choice |
@@ -47,22 +45,6 @@ Copy `.env.local` and fill in all values:
 2. Go to **SQL Editor**
 3. Run the contents of `supabase-schema.sql`
 4. Copy your **Project URL** and **anon key** from Settings → API
-
----
-
-## 💳 Stripe Setup
-
-1. Create account at [stripe.com](https://stripe.com)
-2. Get your **test** API keys from Developers → API keys
-3. After deploying, create a webhook endpoint:
-   - URL: `https://your-domain.vercel.app/api/stripe/webhook`
-   - Events: `checkout.session.completed`
-4. Copy the **Webhook Signing Secret** → `STRIPE_WEBHOOK_SECRET`
-
-> For local webhook testing, use [Stripe CLI](https://stripe.com/docs/stripe-cli):
-> ```bash
-> stripe listen --forward-to localhost:3000/api/stripe/webhook
-> ```
 
 ---
 
@@ -94,8 +76,8 @@ Use the `ADMIN_USERNAME` and `ADMIN_PASSWORD` values from your `.env.local`.
 src/
 ├── app/
 │   ├── page.tsx                    # Public landing page
-│   ├── book/page.tsx               # 3-step booking flow
-│   ├── booking-confirmed/page.tsx  # Post-payment success
+│   ├── book/page.tsx               # Booking flow
+│   ├── booking-confirmed/page.tsx  # Booking confirmation / pending payment
 │   ├── admin/                      # Protected admin area
 │   │   ├── layout.tsx              # Auth guard
 │   │   ├── page.tsx                # Overview
@@ -106,9 +88,7 @@ src/
 │       ├── auth/[...nextauth]/     # NextAuth handler
 │       ├── slots/                  # GET/POST/DELETE slots
 │       ├── appointments/           # GET/PATCH appointments
-│       └── stripe/
-│           ├── checkout/           # Create Stripe session
-│           └── webhook/            # Handle payment events
+│       └── bookings/               # Create + fetch bookings
 ├── components/
 │   ├── layout/                     # Navbar, Footer
 │   ├── landing/                    # All landing sections
@@ -116,7 +96,7 @@ src/
 │   └── admin/                      # SlotManager, AppointmentTable
 ├── lib/
 │   ├── supabase.ts
-│   ├── stripe.ts
+│   ├── bookings.ts
 │   └── auth.ts
 └── types/index.ts
 ```

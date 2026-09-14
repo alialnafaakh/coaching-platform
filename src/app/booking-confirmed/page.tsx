@@ -6,12 +6,12 @@ import { Suspense, useEffect, useState } from "react";
 import { format } from "date-fns";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { useLanguage } from "@/context/LanguageContext";
+import { useLanguage, type StringTranslationKey } from "@/context/LanguageContext";
 import type { PublicAppointment } from "@/types";
 
 function statusCopy(
   appointment: PublicAppointment | null,
-  t: (key: string) => string
+  t: (key: StringTranslationKey) => string
 ) {
   if (!appointment) {
     return {

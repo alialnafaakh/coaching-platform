@@ -81,7 +81,6 @@ export async function POST(req: NextRequest) {
       room_id: null,
       started_at: null,
       ended_at: null,
-      stripe_session_id: null,
     };
 
     const { data: created, error: insertError } = await db

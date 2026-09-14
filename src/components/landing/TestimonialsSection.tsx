@@ -9,7 +9,7 @@ interface Testimonial {
   role: string;
   date?: string;
   quote: string;
-  stars: number;
+  stars?: number;
 }
 
 export default function TestimonialsSection({ title = "Stories of Change" }: { title?: string }) {
@@ -29,15 +29,13 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
           setTestimonials(saved);
         } else {
           // Fallback to language context defaults
-          const fallback = t("testimonials_data") as unknown as Testimonial[];
-          setTestimonials(Array.isArray(fallback) ? fallback : []);
+          setTestimonials(t("testimonials_data"));
         }
       })
       .catch(() => {
-        const fallback = t("testimonials_data") as unknown as Testimonial[];
-        setTestimonials(Array.isArray(fallback) ? fallback : []);
+        setTestimonials(t("testimonials_data"));
       });
-  }, [lang]);
+  }, [lang, t]);
 
   return (
     <section id="testimonials" ref={ref} className="py-28 px-6 bg-[#faf9f6]">

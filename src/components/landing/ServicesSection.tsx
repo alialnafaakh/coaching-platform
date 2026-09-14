@@ -50,7 +50,7 @@ export default function ServicesSection({ title = "What We Work On" }: { title?:
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
-  const servicesData = t("services_data") as unknown as any[];
+  const servicesData = t("services_data");
 
   return (
     <section id="services" ref={ref} className="py-28 px-6 bg-[#faf9f6]">

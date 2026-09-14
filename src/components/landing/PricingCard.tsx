@@ -21,7 +21,7 @@ export default function PricingCard({ title = "Investment", features }: { title?
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
-  const included = features && features.length > 0 ? features : (t("sections") as any)?.pricingFeatures || [];
+  const included = features && features.length > 0 ? features : DEFAULT_INCLUDED;
 
   return (
     <section id="pricing" ref={ref} className="py-28 px-6 bg-[#f0ede6]">

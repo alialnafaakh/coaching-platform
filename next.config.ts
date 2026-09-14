@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Allow Stripe webhook to receive raw body
-  serverExternalPackages: ["stripe"],
 };
 
 export default nextConfig;

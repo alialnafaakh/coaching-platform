@@ -19,7 +19,7 @@ export default function AboutSection({ content }: { content?: any }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
-  const tags = t("tags") as unknown as string[];
+  const tags = t("tags");
 
   return (
     <section id="about" ref={ref} className="py-28 px-6 bg-[#f0ede6]">

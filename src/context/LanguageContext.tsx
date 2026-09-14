@@ -4,16 +4,128 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 type Language = "en" | "ar";
 
+export type UiService = {
+  icon: string;
+  title: string;
+  description: string;
+};
+
+export type UiTestimonial = {
+  name: string;
+  role: string;
+  quote: string;
+};
+
+/** Catalog of UI copy. Most entries are strings; a few are structured data. */
+export type UiStrings = {
+  book_session: string;
+  book_now: string;
+  learn_more: string;
+  about: string;
+  services: string;
+  testimonials: string;
+  pricing: string;
+  contact: string;
+  navigate: string;
+  all_rights: string;
+  redirecting: string;
+  confirm_pay: string;
+  your_booking: string;
+  full_name: string;
+  email_address: string;
+  what_brings: string;
+  secure_payment: string;
+  admin: string;
+  choose_payment: string;
+  pay_patreon: string;
+  pay_patreon_desc: string;
+  pay_qicard: string;
+  pay_qicard_desc: string;
+  qicard_instructions: string;
+  qicard_number_label: string;
+  qicard_copied: string;
+  qicard_copy: string;
+  qicard_confirm: string;
+  qicard_note: string;
+  patreon_redirecting: string;
+  patreon_confirm: string;
+  patreon_instructions: string;
+  cta_eyebrow: string;
+  cta_headline: string;
+  cta_subheadline: string;
+  cta_footer: string;
+  areas_of_focus: string;
+  about_maryem: string;
+  about_headline: string;
+  about_highlight: string;
+  lives_transformed: string;
+  client_rating: string;
+  tags: string[];
+  services_data: UiService[];
+  what_clients_say: string;
+  testimonials_data: UiTestimonial[];
+  pricing_headline: string;
+  one_on_one: string;
+  pricing_badge: string;
+  pricing_footer: string;
+  reserve_spot: string;
+  pricing_disclaimer: string;
+  booking_notes_placeholder: string;
+  booking_name_placeholder: string;
+  booking_email_placeholder: string;
+  minute_session: string;
+  error_generic: string;
+  choose_date: string;
+  choose_time: string;
+  your_details: string;
+  select_date_info: string;
+  available_times: string;
+  istanbul_time: string;
+  change_time: string;
+  no_slots_for: string;
+  choose_another_date: string;
+  booked_headline: string;
+  booked_subheadline: string;
+  whats_next: string;
+  check_inbox: string;
+  add_calendar: string;
+  intake_sent: string;
+  back_home: string;
+  reserve_session: string;
+  reserving: string;
+  payment_required: string;
+  pending_payment_label: string;
+  confirmed_label: string;
+  cancelled_label: string;
+  in_progress_label: string;
+  completed_label: string;
+  booking_pending_headline: string;
+  booking_pending_sub: string;
+  booking_hold_note: string;
+  payment_next_note: string;
+  hold_until: string;
+  expired_hold: string;
+  expired_hold_sub: string;
+  loading_booking: string;
+  booking_not_found: string;
+  booking_missing_access: string;
+};
+
+export type TranslationKey = keyof UiStrings;
+export type StringTranslationKey = {
+  [K in TranslationKey]: UiStrings[K] extends string ? K : never;
+}[TranslationKey];
+
 interface LanguageContextType {
   lang: Language;
   setLang: (lang: Language) => void;
   isRtl: boolean;
-  t: (key: string) => any;
+  t: <K extends TranslationKey>(key: K) => UiStrings[K];
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const UI_STRINGS: Record<Language, Record<string, any>> = {
+const UI_STRINGS: Record<Language, UiStrings> = {
   en: {
     book_session: "Book a Session",
     book_now: "Book Your Session — $50",
@@ -25,13 +137,13 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     contact: "Contact",
     navigate: "Navigate",
     all_rights: "All rights reserved.",
-    redirecting: "Redirecting to Stripe...",
+    redirecting: "Redirecting to payment...",
     confirm_pay: "Confirm & Pay $50 →",
     your_booking: "Your Booking",
     full_name: "Full Name",
     email_address: "Email Address",
     what_brings: "What brings you here? (optional)",
-    secure_payment: "Secure payment via Stripe · SSL encrypted",
+    secure_payment: "Secure payment · SSL encrypted",
     admin: "Admin",
     choose_payment: "Choose Payment Method",
     pay_patreon: "Pay via Patreon",
@@ -50,7 +162,7 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     cta_eyebrow: "Ready when you are",
     cta_headline: "The relationship you want starts with one honest session.",
     cta_subheadline: "Book your 40-minute session today. Pick a time that works for you — starting tomorrow.",
-    cta_footer: "50% off today · Secure payment via Stripe · Refundable if needed",
+    cta_footer: "50% off today · Secure payment · Refundable if needed",
     areas_of_focus: "Areas of focus",
     about_maryem: "About Maryem",
     about_headline: "Relationships are biological, psychological, and social — all at once.",
@@ -111,7 +223,7 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     pricing_headline: "One session. Real change.",
     one_on_one: "1-on-1 Coaching Session",
     pricing_badge: "50% OFF — Limited Time Offer",
-    pricing_footer: "40 minutes · Secure payment via Stripe",
+    pricing_footer: "40 minutes · Secure payment",
     reserve_spot: "Reserve My Spot",
     pricing_disclaimer: "Secure checkout · No subscriptions · Cancel anytime",
     booking_notes_placeholder: "Brief context about what you'd like to work on…",
@@ -165,13 +277,13 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     contact: "اتصل بي",
     navigate: "تصفح الموقع",
     all_rights: "جميع الحقوق محفوظة.",
-    redirecting: "جاري التحويل إلى Stripe...",
+    redirecting: "جاري التحويل إلى الدفع...",
     confirm_pay: "تأكيد ودفع 50 دولار ←",
     your_booking: "حجزك",
     full_name: "الاسم الكامل",
     email_address: "البريد الإلكتروني",
     what_brings: "ما الذي يأتي بك إلى هنا؟ (اختياري)",
-    secure_payment: "دفع آمن عبر Stripe · مشفر SSL",
+    secure_payment: "دفع آمن · مشفر SSL",
     admin: "لوحة التحكم",
     choose_payment: "اختر طريقة الدفع",
     pay_patreon: "الدفع عبر Patreon",
@@ -190,7 +302,7 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     cta_eyebrow: "جاهزون عندما تكونين جاهزة",
     cta_headline: "العلاقة التي تطمحين إليها تبدأ بجلسة واحدة صادقة.",
     cta_subheadline: "احجزي جلستك التي تبلغ 40 دقيقة اليوم. اختاري الوقت المناسب لك — بدءًا من الغد.",
-    cta_footer: "خصم 50% اليوم · دفع آمن عبر Stripe · قابل للاسترداد إذا لزم الأمر",
+    cta_footer: "خصم 50% اليوم · دفع آمن · قابل للاسترداد إذا لزم الأمر",
     areas_of_focus: "مجالات التركيز",
     about_maryem: "عن مريم",
     about_headline: "العلاقات بيولوجية ونفسية واجتماعية — كلها في وقت واحد.",
@@ -251,7 +363,7 @@ const UI_STRINGS: Record<Language, Record<string, any>> = {
     pricing_headline: "جلسة واحدة. تغيير حقيقي.",
     one_on_one: "جلسة كوتشينج خاصة (1 لـ 1)",
     pricing_badge: "خصم 50% — عرض لفترة محدودة",
-    pricing_footer: "40 دقيقة · دفع آمن عبر Stripe",
+    pricing_footer: "40 دقيقة · دفع آمن",
     reserve_spot: "احجز مكاني الآن",
     pricing_disclaimer: "دفع آمن · لا توجد اشتراكات · إلغاء في أي وقت",
     booking_notes_placeholder: "سياق موجز حول ما ترغبين في العمل عليه...",
@@ -311,7 +423,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = newLang === "ar" ? "rtl" : "ltr";
   };
 
-  const t = (key: string) => UI_STRINGS[lang][key] || key;
+  const t = <K extends TranslationKey>(key: K): UiStrings[K] => UI_STRINGS[lang][key];
 
   return (
     <LanguageContext.Provider value={{ lang, setLang: handleSetLang, isRtl: lang === "ar", t }}>

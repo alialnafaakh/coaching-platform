@@ -19,11 +19,11 @@ const policies = {
         },
         {
           heading: "Payment Processing",
-          body: "All payments are processed securely through Stripe, a globally trusted payment platform. Transactions are protected by SSL/TLS encryption. We accept all major credit and debit cards.",
+          body: "All payments are processed securely through our payment provider. Transactions are protected by SSL/TLS encryption. We accept major credit and debit cards where supported.",
         },
         {
           heading: "Data Security",
-          body: "Your payment information is never stored on our servers. All card data is handled exclusively by Stripe in compliance with PCI-DSS standards. We only receive confirmation that payment was successful.",
+          body: "Your payment information is never stored on our servers. Card data is handled exclusively by our payment provider under industry security standards. We only receive confirmation that payment was successful.",
         },
         {
           heading: "Currency",
@@ -42,7 +42,7 @@ const policies = {
         },
         {
           heading: "Refund Amount",
-          body: "Cancellations made more than 24 hours in advance are eligible for an 80–100% refund of the total amount paid. The exact refund percentage depends on processing fees applied by Stripe at the time of the transaction.",
+          body: "Cancellations made more than 24 hours in advance are eligible for an 80–100% refund of the total amount paid. The exact refund percentage may depend on processing fees applied by the payment provider at the time of the transaction.",
         },
         {
           heading: "Late Cancellations",
@@ -73,7 +73,7 @@ const policies = {
         },
         {
           heading: "Payment Information",
-          body: "All payment data is processed and stored exclusively by Stripe. We never see, access, or store your card or bank details on our systems. Stripe complies with PCI-DSS Level 1 standards — the highest level of payment security.",
+          body: "All payment data is processed and stored exclusively by our payment provider. We never see, access, or store your card or bank details on our systems.",
         },
         {
           heading: "Confidentiality",
@@ -114,11 +114,11 @@ const policies = {
         },
         {
           heading: "معالجة المدفوعات",
-          body: "تُعالَج جميع المدفوعات بأمان عبر منصة Stripe الموثوقة عالميًا. وتُحمى المعاملات بتشفير SSL/TLS. نقبل جميع بطاقات الائتمان والخصم الرئيسية.",
+          body: "تُعالَج جميع المدفوعات بأمان عبر مزود الدفع الخاص بنا. وتُحمى المعاملات بتشفير SSL/TLS. نقبل بطاقات الائتمان والخصم الرئيسية حيثما كانت مدعومة.",
         },
         {
           heading: "أمان البيانات",
-          body: "لا يتم تخزين معلومات الدفع الخاصة بك على خوادمنا. تُعالَج جميع بيانات البطاقات حصريًا من قِبل Stripe وفق معايير PCI-DSS. نحن نتلقى فقط تأكيدًا بنجاح الدفع.",
+          body: "لا يتم تخزين معلومات الدفع الخاصة بك على خوادمنا. تُعالَج بيانات البطاقات حصريًا من قِبل مزود الدفع وفق معايير أمان الصناعة. نحن نتلقى فقط تأكيدًا بنجاح الدفع.",
         },
         {
           heading: "العملة",
@@ -137,7 +137,7 @@ const policies = {
         },
         {
           heading: "مبلغ الاسترداد",
-          body: "الإلغاءات التي تتم قبل أكثر من 24 ساعة مؤهلة لاسترداد 80 إلى 100% من المبلغ الإجمالي المدفوع. تعتمد النسبة الدقيقة للاسترداد على رسوم المعالجة التي يطبّقها Stripe وقت المعاملة.",
+          body: "الإلغاءات التي تتم قبل أكثر من 24 ساعة مؤهلة لاسترداد 80 إلى 100% من المبلغ الإجمالي المدفوع. قد تعتمد النسبة الدقيقة للاسترداد على رسوم المعالجة التي يطبّقها مزود الدفع وقت المعاملة.",
         },
         {
           heading: "الإلغاء المتأخر",
@@ -168,7 +168,7 @@ const policies = {
         },
         {
           heading: "معلومات الدفع",
-          body: "تُعالَج جميع بيانات الدفع وتُخزَّن حصريًا من قِبل Stripe. لا نرى أو نصل إلى أو نخزّن تفاصيل بطاقتك أو حسابك المصرفي على أنظمتنا. يمتثل Stripe لمعايير PCI-DSS من المستوى الأول — أعلى مستوى لأمان الدفع.",
+          body: "تُعالَج جميع بيانات الدفع وتُخزَّن حصريًا من قِبل مزود الدفع. لا نرى أو نصل إلى أو نخزّن تفاصيل بطاقتك أو حسابك المصرفي على أنظمتنا.",
         },
         {
           heading: "السرية المهنية",
