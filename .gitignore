@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local / cache / tooling
+supabase/.temp/
+.scratch/
+scratch/
+*.log
+.DS_Store
+Thumbs.db
+
+# local backups created during consolidation
+_backup_*/
