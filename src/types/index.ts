@@ -27,7 +27,7 @@ export interface Appointment {
   payment_provider: PaymentProvider;
   payment_status: PaymentStatus;
   payment_expires_at: string | null;
-  join_token: string;
+  join_token?: string;
   room_id: string | null;
   started_at: string | null;
   ended_at: string | null;
@@ -37,6 +37,8 @@ export interface Appointment {
   base_price_usd?: number | null;
   discount_percent?: number | null;
   final_price_usd?: number | null;
+  consultation_email_sent_at?: string | null;
+  consultation_email_last_error?: string | null;
   time_slots?: TimeSlot;
 }
 

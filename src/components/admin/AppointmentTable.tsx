@@ -38,6 +38,13 @@ export default function AppointmentTable() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{
+    id: string;
+    tone: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   const fetchAppts = () => {
     setLoading(true);
@@ -54,9 +61,89 @@ export default function AppointmentTable() {
   const handleCancel = async (id: string) => {
     if (!confirm("Cancel this appointment and free the time slot?")) return;
     setCancelling(id);
+    setActionMessage(null);
     await fetch(`/api/appointments?id=${id}`, { method: "PATCH" });
     setCancelling(null);
     fetchAppts();
+  };
+
+  const handleConfirm = async (id: string) => {
+    if (!confirm("Confirm this appointment and email the consultation link to the customer?")) {
+      return;
+    }
+    setConfirming(id);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(id)}/confirm`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionMessage({
+          id,
+          tone: "err",
+          text: typeof data.error === "string" ? data.error : "Unable to confirm appointment.",
+        });
+      } else if (data.consultation_email_last_error) {
+        setActionMessage({
+          id,
+          tone: "err",
+          text: `Confirmed, but email failed: ${data.consultation_email_last_error}`,
+        });
+      } else if (data.alreadyConfirmed) {
+        setActionMessage({
+          id,
+          tone: "ok",
+          text: "Already confirmed. Use Resend if the customer needs the link again.",
+        });
+      } else {
+        setActionMessage({
+          id,
+          tone: "ok",
+          text: data.consultation_email_sent_at
+            ? "Confirmed. Consultation link emailed to the customer."
+            : "Confirmed. Email status pending — use Resend if needed.",
+        });
+      }
+    } catch {
+      setActionMessage({ id, tone: "err", text: "Unable to confirm appointment." });
+    } finally {
+      setConfirming(null);
+      fetchAppts();
+    }
+  };
+
+  const handleResend = async (id: string) => {
+    if (!confirm("Resend the consultation link to this customer's saved email?")) return;
+    setResending(id);
+    setActionMessage(null);
+    try {
+      const res = await fetch(
+        `/api/appointments/${encodeURIComponent(id)}/resend-consultation-email`,
+        { method: "POST" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionMessage({
+          id,
+          tone: "err",
+          text: typeof data.error === "string" ? data.error : "Unable to resend email.",
+        });
+      } else {
+        setActionMessage({
+          id,
+          tone: "ok",
+          text: data.sent_to
+            ? `Consultation link resent to ${data.sent_to}.`
+            : "Consultation link resent.",
+        });
+      }
+    } catch {
+      setActionMessage({ id, tone: "err", text: "Unable to resend email." });
+    } finally {
+      setResending(null);
+      fetchAppts();
+    }
   };
 
   return (
@@ -68,7 +155,7 @@ export default function AppointmentTable() {
         Appointments
       </h1>
       <p className="text-sm text-[#6b7280] mb-8">
-        All client bookings. Cancel any appointment to free its time slot.
+        All client bookings. Confirm pending payments to email the secure consultation link.
       </p>
 
       {loading ? (
@@ -124,6 +211,26 @@ export default function AppointmentTable() {
                         : null}
                     </p>
                   )}
+                  {appt.consultation_email_sent_at ? (
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Consultation email sent{" "}
+                      {format(new Date(appt.consultation_email_sent_at), "MMM d, HH:mm")}
+                    </p>
+                  ) : null}
+                  {appt.consultation_email_last_error ? (
+                    <p className="text-xs text-red-500 mt-1">
+                      Email error: {appt.consultation_email_last_error}
+                    </p>
+                  ) : null}
+                  {actionMessage?.id === appt.id ? (
+                    <p
+                      className={`text-xs mt-1 ${
+                        actionMessage.tone === "ok" ? "text-emerald-700" : "text-red-500"
+                      }`}
+                    >
+                      {actionMessage.text}
+                    </p>
+                  ) : null}
                   {appt.notes && (
                     <p className="text-xs text-[#9ca3af] mt-1 italic max-w-xs truncate">
                       &ldquo;{appt.notes}&rdquo;
@@ -151,6 +258,27 @@ export default function AppointmentTable() {
                 <span className="px-2.5 py-1 rounded-full text-xs font-medium border bg-[#faf9f6] text-[#6b7280] border-[#e5e0d8]">
                   {consultationLabel(appt.status)}
                 </span>
+
+                {appt.status === "pending_payment" && (
+                  <button
+                    onClick={() => handleConfirm(appt.id)}
+                    disabled={confirming === appt.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+                  >
+                    {confirming === appt.id ? "…" : "Confirm & email link"}
+                  </button>
+                )}
+
+                {(appt.status === "confirmed" || appt.status === "in_progress") && (
+                  <button
+                    onClick={() => handleResend(appt.id)}
+                    disabled={resending === appt.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#0d7377] border border-[#0d7377]/30 hover:bg-[#f0fafa] transition-colors disabled:opacity-50"
+                  >
+                    {resending === appt.id ? "…" : "Resend consultation link"}
+                  </button>
+                )}
 
                 {canOpenConsultation(appt.status) ? (
                   <Link

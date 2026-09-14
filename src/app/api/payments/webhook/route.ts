@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { findWaylSignature, isWaylPaid, verifyWaylSignature } from "@/lib/wayl";
+import { notifyConsultationConfirmed } from "@/lib/consultationEmail";
 
 export const dynamic = "force-dynamic";
 
@@ -66,9 +67,11 @@ export async function POST(req: NextRequest) {
     ).data;
 
   if (existing) {
-    if (existing.status !== "confirmed") {
+    if (existing.status !== "confirmed" && existing.status !== "in_progress") {
       await db.from("appointments").update({ status: "confirmed" }).eq("id", existing.id);
       await db.from("time_slots").update({ is_booked: true }).eq("id", existing.slot_id);
+      // WayL remains inactive in product flow; hook kept for when payment is enabled.
+      await notifyConsultationConfirmed(db, existing.id);
     }
     return NextResponse.json({ received: true });
   }
@@ -90,16 +93,25 @@ export async function POST(req: NextRequest) {
     payment_provider: "wayl",
     status: "confirmed",
   };
-  const inserted = await db.from("appointments").insert(row);
-  if (inserted.error) {
-    await db.from("appointments").insert({
-      slot_id: meta.slot_id,
-      client_name: meta.client_name,
-      client_email: meta.client_email,
-      notes: meta.notes || null,
-      stripe_session_id: referenceId,
-      status: "confirmed",
-    });
+  const inserted = await db.from("appointments").insert(row).select("id").maybeSingle();
+  if (inserted.error || !inserted.data) {
+    const fallback = await db
+      .from("appointments")
+      .insert({
+        slot_id: meta.slot_id,
+        client_name: meta.client_name,
+        client_email: meta.client_email,
+        notes: meta.notes || null,
+        stripe_session_id: referenceId,
+        status: "confirmed",
+      })
+      .select("id")
+      .maybeSingle();
+    if (fallback.data?.id) {
+      await notifyConsultationConfirmed(db, fallback.data.id);
+    }
+  } else if (inserted.data.id) {
+    await notifyConsultationConfirmed(db, inserted.data.id);
   }
 
   return NextResponse.json({ received: true });
