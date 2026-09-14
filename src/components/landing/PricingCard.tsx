@@ -1,27 +1,53 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-
-const DEFAULT_INCLUDED = [
-  "40-minute private session via video",
-  "Personalized biopsychosocial intake",
-  "Session summary & action plan",
-  "Resource recommendations",
-  "Secure, confidential booking",
-  "Follow-up support email",
-];
-
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  DEFAULT_CONSULTATION_SETTINGS,
+  calculateFinalPrice,
+  formatUsd,
+} from "@/lib/consultationSettings";
 
-export default function PricingCard({ title = "Investment", features }: { title?: string, features?: string[] }) {
+export default function PricingCard({
+  title = "Investment",
+  features,
+}: {
+  title?: string;
+  features?: string[];
+}) {
   const { isRtl, t } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [duration, setDuration] = useState(DEFAULT_CONSULTATION_SETTINGS.session_duration_minutes);
+  const [basePrice, setBasePrice] = useState(DEFAULT_CONSULTATION_SETTINGS.base_price_usd);
+  const [discount, setDiscount] = useState(DEFAULT_CONSULTATION_SETTINGS.discount_percent);
+  const finalPrice = calculateFinalPrice(basePrice, discount);
+  const showDiscount = discount > 0;
 
-  const included = features && features.length > 0 ? features : DEFAULT_INCLUDED;
+  useEffect(() => {
+    fetch("/api/consultation-settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.session_duration_minutes === "number") {
+          setDuration(d.session_duration_minutes);
+          setBasePrice(d.base_price_usd);
+          setDiscount(d.discount_percent);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const defaultIncluded = [
+    `${duration}-minute private session via video`,
+    "Personalized biopsychosocial intake",
+    "Session summary & action plan",
+    "Resource recommendations",
+    "Secure, confidential booking",
+    "Follow-up support email",
+  ];
+  const included = features && features.length > 0 ? features : defaultIncluded;
 
   return (
     <section id="pricing" ref={ref} className="py-28 px-6 bg-[#f0ede6]">
@@ -51,7 +77,6 @@ export default function PricingCard({ title = "Investment", features }: { title?
           transition={{ duration: 0.7, delay: 0.2 }}
           className="relative bg-white rounded-3xl overflow-hidden shadow-2xl border border-[#e5e0d8]"
         >
-          {/* Top accent bar */}
           <div
             className="h-1.5 w-full"
             style={{ background: "linear-gradient(90deg, #0d7377, #d4a843)" }}
@@ -59,36 +84,36 @@ export default function PricingCard({ title = "Investment", features }: { title?
 
           <div className="p-8 md:p-12">
             <div className={`flex flex-col md:flex-row md:items-start md:justify-between gap-8 ${isRtl ? "md:flex-row-reverse" : ""}`}>
-              {/* Left: pricing */}
               <div className={isRtl ? "text-right" : "text-left"}>
                 <p className={`text-sm font-medium text-[#6b7280] mb-3 ${isRtl ? "font-arabic" : ""}`}>
-                  {t("one_on_one")}
+                  {t("one_on_one")} · {duration} {t("minutes_unit")}
                 </p>
 
-                {/* Price display */}
                 <div className={`flex items-baseline gap-3 mb-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-                  <span className="text-2xl text-[#d1d5db] line-through font-light">
-                    $100
-                  </span>
+                  {showDiscount && (
+                    <span className="text-2xl text-[#d1d5db] line-through font-light">
+                      {formatUsd(basePrice)}
+                    </span>
+                  )}
                   <span
                     className={`text-6xl font-semibold text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
                     style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
                   >
-                    $50
+                    {formatUsd(finalPrice)}
                   </span>
                 </div>
 
-                {/* Discount badge */}
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#d4a843]/15 text-[#9a7520] border border-[#d4a843]/30 ${isRtl ? "font-arabic flex-row-reverse" : ""}`}>
-                  {isRtl ? "🔥" : "🔥"} {t("pricing_badge")}
-                </span>
+                {showDiscount && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#d4a843]/15 text-[#9a7520] border border-[#d4a843]/30 ${isRtl ? "font-arabic flex-row-reverse" : ""}`}>
+                    {discount}% {t("off_label")}
+                  </span>
+                )}
 
                 <p className={`mt-4 text-sm text-[#6b7280] ${isRtl ? "font-arabic" : ""}`}>
-                  {t("pricing_footer")}
+                  {duration} {t("minutes_unit")} · {t("pricing_footer")}
                 </p>
               </div>
 
-              {/* Right: included items */}
               <ul className={`flex flex-col gap-3 ${isRtl ? "text-right" : "text-left"}`}>
                 {included.map((item: string) => (
                   <li key={item} className={`flex items-center gap-3 text-sm text-[#374151] ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -104,7 +129,6 @@ export default function PricingCard({ title = "Investment", features }: { title?
               </ul>
             </div>
 
-            {/* CTA */}
             <div className={`mt-10 flex flex-col sm:flex-row items-center gap-4 ${isRtl ? "sm:flex-row-reverse" : ""}`}>
               <Link
                 href="/book"
@@ -119,7 +143,6 @@ export default function PricingCard({ title = "Investment", features }: { title?
             </div>
           </div>
 
-          {/* Decorative blob */}
           <div
             className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full opacity-8"
             style={{ background: "radial-gradient(circle, #0d7377, transparent)" }}

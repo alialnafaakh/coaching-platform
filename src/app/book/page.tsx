@@ -1,24 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import BookingDatePicker from "@/components/booking/DatePicker";
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import BookingForm from "@/components/booking/BookingForm";
-import { TimeSlot } from "@/types";
+import ConsultationPriceSummary from "@/components/booking/ConsultationPriceSummary";
+import { TimeSlot, ConsultationSettingsPublic } from "@/types";
+import { useLanguage } from "@/context/LanguageContext";
+import { DEFAULT_CONSULTATION_SETTINGS, calculateFinalPrice } from "@/lib/consultationSettings";
 
 type Step = "date" | "time" | "form";
-
-import { useLanguage } from "@/context/LanguageContext";
 
 export default function BookPage() {
   const { isRtl, t, lang } = useLanguage();
   const [step, setStep] = useState<Step>("date");
   const [date, setDate] = useState<Date | undefined>();
   const [slot, setSlot] = useState<TimeSlot | null>(null);
+  const [pricing, setPricing] = useState<ConsultationSettingsPublic>({
+    ...DEFAULT_CONSULTATION_SETTINGS,
+    final_price_usd: calculateFinalPrice(
+      DEFAULT_CONSULTATION_SETTINGS.base_price_usd,
+      DEFAULT_CONSULTATION_SETTINGS.discount_percent
+    ),
+  });
+
+  useEffect(() => {
+    fetch("/api/consultation-settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.session_duration_minutes === "number") {
+          setPricing({
+            session_duration_minutes: d.session_duration_minutes,
+            base_price_usd: d.base_price_usd,
+            discount_percent: d.discount_percent,
+            final_price_usd: d.final_price_usd,
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   const handleDateSelect = (d: Date | undefined) => {
     setDate(d);
@@ -47,7 +70,6 @@ export default function BookPage() {
       <Navbar />
       <main className={`min-h-screen bg-[#faf9f6] pt-24 pb-20 px-6 ${isRtl ? "text-right" : "text-left"}`}>
         <div className="max-w-xl mx-auto">
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -59,14 +81,15 @@ export default function BookPage() {
             >
               {t("book_session")}
             </h1>
-            <p className={`text-sm text-[#6b7280] ${isRtl ? "font-arabic" : ""}`}>
-              {t("minute_session")} · {" "}
-              <span className="line-through text-[#9ca3af]">$100</span>{" "}
-              <span className="font-medium text-[#0d7377]">{isRtl ? "50 دولار اليوم" : "$50 today"}</span>
-            </p>
+            <ConsultationPriceSummary
+              className="flex flex-col items-center"
+              durationMinutes={pricing.session_duration_minutes}
+              basePriceUsd={pricing.base_price_usd}
+              discountPercent={pricing.discount_percent}
+              finalPriceUsd={pricing.final_price_usd}
+            />
           </motion.div>
 
-          {/* Progress stepper */}
           <div className={`flex items-center justify-center gap-2 mb-10 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
             {steps.map((label, i) => (
               <div key={label} className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
@@ -91,7 +114,6 @@ export default function BookPage() {
             ))}
           </div>
 
-          {/* Step panels */}
           <motion.div
             key={step}
             initial={{ opacity: 0, x: isRtl ? -20 : 20 }}
@@ -104,10 +126,7 @@ export default function BookPage() {
                 <p className={`text-sm font-medium text-[#1a1a2e] mb-6 text-center ${isRtl ? "font-arabic" : ""}`}>
                   {t("select_date_info")}
                 </p>
-                <BookingDatePicker
-                  selected={date}
-                  onSelect={handleDateSelect}
-                />
+                <BookingDatePicker selected={date} onSelect={handleDateSelect} />
               </div>
             )}
 
@@ -126,11 +145,7 @@ export default function BookPage() {
                     {t("istanbul_time")}
                   </span>
                 </p>
-                <TimeSlotPicker
-                  date={date}
-                  selectedSlot={slot}
-                  onSelect={handleSlotSelect}
-                />
+                <TimeSlotPicker date={date} selectedSlot={slot} onSelect={handleSlotSelect} />
               </div>
             )}
 

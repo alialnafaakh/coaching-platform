@@ -33,6 +33,10 @@ export interface Appointment {
   ended_at: string | null;
   status: AppointmentStatus;
   created_at: string;
+  session_duration_minutes?: number | null;
+  base_price_usd?: number | null;
+  discount_percent?: number | null;
+  final_price_usd?: number | null;
   time_slots?: TimeSlot;
 }
 
@@ -47,6 +51,17 @@ export interface PublicAppointment {
   date: string;
   start_time: string;
   end_time: string;
+  session_duration_minutes?: number | null;
+  base_price_usd?: number | null;
+  discount_percent?: number | null;
+  final_price_usd?: number | null;
+}
+
+export interface ConsultationSettingsPublic {
+  session_duration_minutes: number;
+  base_price_usd: number;
+  discount_percent: number;
+  final_price_usd: number;
 }
 
 export interface BookingFormData {

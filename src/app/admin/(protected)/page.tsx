@@ -39,6 +39,19 @@ export default function AdminOverviewPage() {
             See all bookings and manage them
           </p>
         </Link>
+
+        <Link
+          href="/admin/settings"
+          className="bg-white rounded-2xl p-6 border border-[#e5e0d8] hover:border-[#0d7377]/30 hover:shadow-md transition-all group"
+        >
+          <p className="text-3xl mb-3">⚙️</p>
+          <p className="font-semibold text-[#1a1a2e] group-hover:text-[#0d7377] transition-colors">
+            Consultation Settings
+          </p>
+          <p className="text-sm text-[#9ca3af] mt-1">
+            Session duration and discount percentage
+          </p>
+        </Link>
       </div>
 
       <div className="bg-[#0d7377]/6 rounded-2xl p-5 border border-[#0d7377]/15">

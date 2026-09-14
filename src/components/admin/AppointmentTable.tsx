@@ -110,6 +110,24 @@ export default function AppointmentTable() {
                       {appt.time_slots.end_time.slice(0, 5)}
                     </p>
                   )}
+                  {(appt.session_duration_minutes != null || appt.final_price_usd != null) && (
+                    <p className="text-xs text-[#0d7377] mt-0.5">
+                      {appt.session_duration_minutes != null
+                        ? `${appt.session_duration_minutes} min`
+                        : null}
+                      {appt.session_duration_minutes != null && appt.final_price_usd != null
+                        ? " · "
+                        : null}
+                      {appt.final_price_usd != null
+                        ? `$${Number(appt.final_price_usd).toFixed(
+                            Number(appt.final_price_usd) % 1 === 0 ? 0 : 2
+                          )}`
+                        : null}
+                      {appt.discount_percent != null && Number(appt.discount_percent) > 0
+                        ? ` (${Number(appt.discount_percent)}% off)`
+                        : null}
+                    </p>
+                  )}
                   {appt.notes && (
                     <p className="text-xs text-[#9ca3af] mt-1 italic max-w-xs truncate">
                       &ldquo;{appt.notes}&rdquo;

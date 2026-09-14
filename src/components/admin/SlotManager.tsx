@@ -19,9 +19,9 @@ const TIME_OPTIONS = [
 const MORNING = ["09:00", "10:00", "11:00", "12:00"];
 const AFTERNOON = ["14:00", "15:00", "16:00", "17:00", "18:00"];
 
-function toEnd(start: string): string {
+function toEnd(start: string, durationMinutes: number): string {
   const [h, m] = start.split(":").map(Number);
-  const totalM = h * 60 + m + 40;
+  const totalM = h * 60 + m + durationMinutes;
   const endH = Math.floor(totalM / 60) % 24;
   const endM = totalM % 60;
   return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
@@ -38,6 +38,7 @@ function hhmm(value: string) {
 export default function SlotManager() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionMinutes, setSessionMinutes] = useState(40);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedDate, setSelectedDate] = useState(() => addDays(new Date(), 1));
   const [saving, setSaving] = useState(false);
@@ -63,6 +64,14 @@ export default function SlotManager() {
 
   useEffect(() => {
     fetchSlots();
+    fetch("/api/consultation-settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.session_duration_minutes === "number") {
+          setSessionMinutes(d.session_duration_minutes);
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   const selectedKey = dateKey(selectedDate);
@@ -137,7 +146,7 @@ export default function SlotManager() {
         {
           date: selectedKey,
           start_time: `${start}:00`,
-          end_time: `${toEnd(start)}:00`,
+          end_time: `${toEnd(start, sessionMinutes)}:00`,
         },
       ]);
     } finally {
@@ -150,7 +159,7 @@ export default function SlotManager() {
       times.map((start) => ({
         date,
         start_time: `${start}:00`,
-        end_time: `${toEnd(start)}:00`,
+        end_time: `${toEnd(start, sessionMinutes)}:00`,
       }))
     );
 
@@ -174,7 +183,7 @@ export default function SlotManager() {
         items.push({
           date: dateKey(nextDate),
           start_time: `${start}:00`,
-          end_time: `${toEnd(start)}:00`,
+          end_time: `${toEnd(start, sessionMinutes)}:00`,
         });
       }
     }
@@ -191,7 +200,7 @@ export default function SlotManager() {
         items.push({
           date: dateKey(day),
           start_time: `${start}:00`,
-          end_time: `${toEnd(start)}:00`,
+          end_time: `${toEnd(start, sessionMinutes)}:00`,
         });
       }
     }
@@ -210,6 +219,7 @@ export default function SlotManager() {
           </h1>
           <p className="text-sm text-[#6b7280]">
             Click a day, then click hours to open them for clients. Click again to close.
+            New slots use the current session duration ({sessionMinutes} min) from Consultation Settings.
           </p>
         </div>
         <div className="flex gap-3">

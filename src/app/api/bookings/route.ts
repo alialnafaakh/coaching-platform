@@ -7,6 +7,10 @@ import {
   toPublicAppointment,
   validateCustomer,
 } from "@/lib/bookings";
+import {
+  calculateFinalPrice,
+  getConsultationSettings,
+} from "@/lib/consultationSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +44,8 @@ export async function POST(req: NextRequest) {
 
   try {
     await expireExpiredHolds(db);
+    const settings = await getConsultationSettings(db);
+    const finalPrice = calculateFinalPrice(settings.base_price_usd, settings.discount_percent);
 
     const { data: reserved, error: reserveError } = await db
       .from("time_slots")
@@ -81,6 +87,10 @@ export async function POST(req: NextRequest) {
       room_id: null,
       started_at: null,
       ended_at: null,
+      session_duration_minutes: settings.session_duration_minutes,
+      base_price_usd: settings.base_price_usd,
+      discount_percent: settings.discount_percent,
+      final_price_usd: finalPrice,
     };
 
     const { data: created, error: insertError } = await db

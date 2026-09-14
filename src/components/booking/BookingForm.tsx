@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { TimeSlot } from "@/types";
+import { useEffect, useState } from "react";
+import { TimeSlot, ConsultationSettingsPublic } from "@/types";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/context/LanguageContext";
+import ConsultationPriceSummary from "@/components/booking/ConsultationPriceSummary";
+import { DEFAULT_CONSULTATION_SETTINGS, calculateFinalPrice } from "@/lib/consultationSettings";
 
 interface Props {
   slot: TimeSlot;
@@ -18,6 +20,29 @@ export default function BookingForm({ slot, date }: Props) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pricing, setPricing] = useState<ConsultationSettingsPublic>({
+    ...DEFAULT_CONSULTATION_SETTINGS,
+    final_price_usd: calculateFinalPrice(
+      DEFAULT_CONSULTATION_SETTINGS.base_price_usd,
+      DEFAULT_CONSULTATION_SETTINGS.discount_percent
+    ),
+  });
+
+  useEffect(() => {
+    fetch("/api/consultation-settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.session_duration_minutes === "number") {
+          setPricing({
+            session_duration_minutes: d.session_duration_minutes,
+            base_price_usd: d.base_price_usd,
+            discount_percent: d.discount_percent,
+            final_price_usd: d.final_price_usd,
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   const formattedDate = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", {
     weekday: "long",
@@ -80,11 +105,13 @@ export default function BookingForm({ slot, date }: Props) {
           {formattedDate} {isRtl ? "في" : "at"}{" "}
           {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
         </p>
-        <p className={`text-sm text-[#6b7280] ${isRtl ? "font-arabic" : ""}`}>
-          {t("minute_session")} ·{" "}
-          <span className="line-through text-[#9ca3af]">$100</span>{" "}
-          <span className="font-semibold text-[#0d7377]">$50</span>
-        </p>
+        <ConsultationPriceSummary
+          className="mt-2"
+          durationMinutes={pricing.session_duration_minutes}
+          basePriceUsd={pricing.base_price_usd}
+          discountPercent={pricing.discount_percent}
+          finalPriceUsd={pricing.final_price_usd}
+        />
       </div>
 
       <div>

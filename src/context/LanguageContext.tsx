@@ -74,6 +74,9 @@ export type UiStrings = {
   booking_name_placeholder: string;
   booking_email_placeholder: string;
   minute_session: string;
+  minutes_unit: string;
+  session_label: string;
+  off_label: string;
   error_generic: string;
   choose_date: string;
   choose_time: string;
@@ -161,8 +164,8 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     patreon_instructions: "You'll be redirected to Patreon to complete your $50 payment securely.",
     cta_eyebrow: "Ready when you are",
     cta_headline: "The relationship you want starts with one honest session.",
-    cta_subheadline: "Book your 40-minute session today. Pick a time that works for you — starting tomorrow.",
-    cta_footer: "50% off today · Secure payment · Refundable if needed",
+    cta_subheadline: "Book your session today. Pick a time that works for you — starting tomorrow.",
+    cta_footer: "Secure payment · Refundable if needed",
     areas_of_focus: "Areas of focus",
     about_maryem: "About Maryem",
     about_headline: "Relationships are biological, psychological, and social — all at once.",
@@ -222,14 +225,17 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     ],
     pricing_headline: "One session. Real change.",
     one_on_one: "1-on-1 Coaching Session",
-    pricing_badge: "50% OFF — Limited Time Offer",
-    pricing_footer: "40 minutes · Secure payment",
+    pricing_badge: "Limited Time Offer",
+    pricing_footer: "Secure payment",
     reserve_spot: "Reserve My Spot",
     pricing_disclaimer: "Secure checkout · No subscriptions · Cancel anytime",
     booking_notes_placeholder: "Brief context about what you'd like to work on…",
     booking_name_placeholder: "Your full name",
     booking_email_placeholder: "you@example.com",
-    minute_session: "40-minute session",
+    minute_session: "Private session",
+    minutes_unit: "minutes",
+    session_label: "session",
+    off_label: "off",
     error_generic: "Something went wrong. Please try again.",
     choose_date: "Choose Date",
     choose_time: "Choose Time",
@@ -301,8 +307,8 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     patreon_instructions: "ستتم إعادة توجيهك إلى Patreon لإتمام دفع 50 دولارًا بأمان.",
     cta_eyebrow: "جاهزون عندما تكونين جاهزة",
     cta_headline: "العلاقة التي تطمحين إليها تبدأ بجلسة واحدة صادقة.",
-    cta_subheadline: "احجزي جلستك التي تبلغ 40 دقيقة اليوم. اختاري الوقت المناسب لك — بدءًا من الغد.",
-    cta_footer: "خصم 50% اليوم · دفع آمن · قابل للاسترداد إذا لزم الأمر",
+    cta_subheadline: "احجزي جلستك اليوم. اختاري الوقت المناسب لك — بدءًا من الغد.",
+    cta_footer: "دفع آمن · قابل للاسترداد إذا لزم الأمر",
     areas_of_focus: "مجالات التركيز",
     about_maryem: "عن مريم",
     about_headline: "العلاقات بيولوجية ونفسية واجتماعية — كلها في وقت واحد.",
@@ -362,14 +368,17 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     ],
     pricing_headline: "جلسة واحدة. تغيير حقيقي.",
     one_on_one: "جلسة كوتشينج خاصة (1 لـ 1)",
-    pricing_badge: "خصم 50% — عرض لفترة محدودة",
-    pricing_footer: "40 دقيقة · دفع آمن",
+    pricing_badge: "عرض لفترة محدودة",
+    pricing_footer: "دفع آمن",
     reserve_spot: "احجز مكاني الآن",
     pricing_disclaimer: "دفع آمن · لا توجد اشتراكات · إلغاء في أي وقت",
     booking_notes_placeholder: "سياق موجز حول ما ترغبين في العمل عليه...",
     booking_name_placeholder: "اسمك الكامل",
     booking_email_placeholder: "you@example.com",
-    minute_session: "جلسة لمدة 40 دقيقة",
+    minute_session: "جلسة خاصة",
+    minutes_unit: "دقيقة",
+    session_label: "جلسة",
+    off_label: "خصم",
     error_generic: "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
     choose_date: "اختر التاريخ",
     choose_time: "اختر الوقت",

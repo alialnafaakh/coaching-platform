@@ -3,6 +3,10 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { expireExpiredHolds } from "@/lib/bookings";
+import {
+  endTimeFromStart,
+  getConsultationSettings,
+} from "@/lib/consultationSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -56,23 +60,30 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+  const db = getSupabaseAdmin();
+  const settings = await getConsultationSettings(db);
+  const duration = settings.session_duration_minutes;
+
   const items = normalizeSlots(body)
-    .filter((item) => item.date && item.start_time && item.end_time)
-    .map((item) => ({
-      date: item.date as string,
-      start_time: padTime(item.start_time as string),
-      end_time: padTime(item.end_time as string),
-      is_booked: false,
-    }));
+    .filter((item) => item.date && item.start_time)
+    .map((item) => {
+      const start = padTime(item.start_time as string);
+      const end = padTime(endTimeFromStart(start.slice(0, 5), duration));
+      return {
+        date: item.date as string,
+        start_time: start,
+        end_time: end,
+        is_booked: false,
+      };
+    });
 
   if (items.length === 0) {
     return NextResponse.json(
-      { error: "date, start_time, and end_time are required" },
+      { error: "date and start_time are required" },
       { status: 400 }
     );
   }
 
-  const db = getSupabaseAdmin();
   try {
     const dates = Array.from(new Set(items.map((item) => item.date)));
     const { data: existing, error: existingError } = await db
@@ -92,7 +103,11 @@ export async function POST(req: NextRequest) {
     const toInsert = items.filter((item) => !taken.has(slotKey(item.date, item.start_time)));
 
     if (toInsert.length === 0) {
-      return NextResponse.json({ created: [], skipped: items.length });
+      return NextResponse.json({
+        created: [],
+        skipped: items.length,
+        session_duration_minutes: duration,
+      });
     }
 
     const { data, error } = await db.from("time_slots").insert(toInsert).select();
@@ -102,12 +117,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { created: data || [], skipped: items.length - (data?.length || 0) },
+      {
+        created: data || [],
+        skipped: items.length - (data?.length || 0),
+        session_duration_minutes: duration,
+      },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Unexpected error during Supabase insert:", err);
-    return NextResponse.json({ error: err.message || "Unexpected error" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Unexpected error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

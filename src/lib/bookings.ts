@@ -63,6 +63,10 @@ export function toPublicAppointment(
     date: slot?.date || appt.time_slots?.date || "",
     start_time: slot?.start_time || appt.time_slots?.start_time || "",
     end_time: slot?.end_time || appt.time_slots?.end_time || "",
+    session_duration_minutes: appt.session_duration_minutes ?? null,
+    base_price_usd: appt.base_price_usd ?? null,
+    discount_percent: appt.discount_percent ?? null,
+    final_price_usd: appt.final_price_usd ?? null,
   };
 }
 
