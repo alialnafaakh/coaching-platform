@@ -58,7 +58,7 @@ export default function AdminOverviewPage() {
         <p className="text-sm font-medium text-[#0d7377] mb-1">💡 Quick Tip</p>
         <p className="text-sm text-[#6b7280]">
           Click a day, then click the hours you want. Use “Copy this day → next 7 days”
-          to open a whole week in one step. Clients can book from tomorrow onward.
+          to open a whole week in one step. Clients can book same-day slots while the start time is still ahead.
         </p>
       </div>
     </div>

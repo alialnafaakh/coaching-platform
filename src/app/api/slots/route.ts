@@ -7,6 +7,7 @@ import {
   endTimeFromStart,
   getConsultationSettings,
 } from "@/lib/consultationSettings";
+import { isIstanbulSlotStartInFuture } from "@/lib/consultationAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,15 @@ export async function GET(req: NextRequest) {
       console.error("Supabase fetch error:", error);
       return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });
     }
-    return NextResponse.json(data);
+
+    // Public list: hide slots whose Istanbul start time has already passed (same-day OK if still future).
+    const rows = admin
+      ? data || []
+      : (data || []).filter((slot: { date: string; start_time: string }) =>
+          isIstanbulSlotStartInFuture(slot.date, slot.start_time)
+        );
+
+    return NextResponse.json(rows);
   } catch (err) {
     console.error("Unexpected error during Supabase fetch:", err);
     return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });

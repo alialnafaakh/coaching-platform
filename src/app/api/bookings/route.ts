@@ -11,6 +11,7 @@ import {
   calculateFinalPrice,
   getConsultationSettings,
 } from "@/lib/consultationSettings";
+import { isIstanbulSlotStartInFuture } from "@/lib/consultationAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,16 @@ export async function POST(req: NextRequest) {
     if (reservedDate !== date || reservedStart !== requestedStart) {
       await db.from("time_slots").update({ is_booked: false }).eq("id", slot_id);
       return clientError("invalid_slot", "Please select a valid date and time.", 400);
+    }
+
+    // Same-day booking allowed; reject only once the Istanbul wall-clock start has passed.
+    if (!isIstanbulSlotStartInFuture(reservedDate, reservedStart)) {
+      await db.from("time_slots").update({ is_booked: false }).eq("id", slot_id);
+      return clientError(
+        "slot_in_past",
+        "This time has already passed. Please choose a later slot.",
+        409
+      );
     }
 
     const joinToken = newJoinToken();

@@ -42,6 +42,25 @@ export function istanbulDateTime(date: string, time: string): Date {
   return new Date(`${date}T${padTime(time)}${CONSULTATION_TZ_OFFSET}`);
 }
 
+/** Calendar date (yyyy-MM-dd) in Europe/Istanbul. */
+export function istanbulCalendarDate(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/** True when the slot start is strictly after `now` in Istanbul wall time. */
+export function isIstanbulSlotStartInFuture(
+  date: string,
+  startTime: string,
+  now = new Date()
+): boolean {
+  return istanbulDateTime(date, startTime).getTime() > now.getTime();
+}
+
 /**
  * Prefer the appointment's booked snapshot duration.
  * Fall back to slot length, then default — never current global settings.
