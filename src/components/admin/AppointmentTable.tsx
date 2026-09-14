@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { Appointment } from "@/types";
 import { motion } from "framer-motion";
+import { canOpenConsultation } from "@/lib/consultationAccess";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -45,7 +47,9 @@ export default function AppointmentTable() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchAppts(); }, []);
+  useEffect(() => {
+    fetchAppts();
+  }, []);
 
   const handleCancel = async (id: string) => {
     if (!confirm("Cancel this appointment and free the time slot?")) return;
@@ -74,9 +78,7 @@ export default function AppointmentTable() {
           ))}
         </div>
       ) : appointments.length === 0 ? (
-        <div className="text-center py-16 text-[#9ca3af] text-sm">
-          No appointments yet.
-        </div>
+        <div className="text-center py-16 text-[#9ca3af] text-sm">No appointments yet.</div>
       ) : (
         <div className="space-y-3">
           {appointments.map((appt, i) => (
@@ -96,18 +98,12 @@ export default function AppointmentTable() {
                 </div>
 
                 <div>
-                  <p className="font-medium text-sm text-[#1a1a2e]">
-                    {appt.client_name}
-                  </p>
+                  <p className="font-medium text-sm text-[#1a1a2e]">{appt.client_name}</p>
                   <p className="text-xs text-[#9ca3af]">{appt.client_email}</p>
                   {appt.time_slots && (
                     <p className="text-xs text-[#6b7280] mt-0.5">
-                      {format(
-                        new Date(`${appt.time_slots.date}T00:00:00`),
-                        "MMM d, yyyy"
-                      )}{" "}
-                      · {appt.time_slots.start_time.slice(0, 5)} –{" "}
-                      {appt.time_slots.end_time.slice(0, 5)}
+                      {format(new Date(`${appt.time_slots.date}T00:00:00`), "MMM d, yyyy")} ·{" "}
+                      {appt.time_slots.start_time.slice(0, 5)} – {appt.time_slots.end_time.slice(0, 5)}
                     </p>
                   )}
                   {(appt.session_duration_minutes != null || appt.final_price_usd != null) && (
@@ -146,7 +142,8 @@ export default function AppointmentTable() {
                 </span>
                 <span
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${
-                    PAYMENT_STYLES[appt.payment_status] ?? "bg-[#f0ede6] text-[#6b7280] border-[#e5e0d8]"
+                    PAYMENT_STYLES[appt.payment_status] ??
+                    "bg-[#f0ede6] text-[#6b7280] border-[#e5e0d8]"
                   }`}
                 >
                   {statusLabel(appt.payment_status || "unpaid")}
@@ -154,6 +151,24 @@ export default function AppointmentTable() {
                 <span className="px-2.5 py-1 rounded-full text-xs font-medium border bg-[#faf9f6] text-[#6b7280] border-[#e5e0d8]">
                   {consultationLabel(appt.status)}
                 </span>
+
+                {canOpenConsultation(appt.status) ? (
+                  <Link
+                    href={`/admin/appointments/${appt.id}/consultation`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+                  >
+                    Open consultation
+                  </Link>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-lg text-xs text-[#9ca3af] border border-[#e5e0d8] bg-[#faf9f6]">
+                    {appt.status === "pending_payment"
+                      ? "Awaiting payment"
+                      : appt.status === "completed"
+                        ? "Ended"
+                        : "Unavailable"}
+                  </span>
+                )}
 
                 {appt.status !== "cancelled" && appt.status !== "completed" && (
                   <button

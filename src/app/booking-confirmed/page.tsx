@@ -219,7 +219,27 @@ function BookingConfirmedContent() {
                 </div>
               )}
 
-              {copy.tone === "confirmed" && (
+              {copy.tone === "confirmed" && appointment && id && token && (
+                <div className={`p-5 rounded-2xl border mb-8 bg-[#0d7377]/6 border-[#0d7377]/15 ${isRtl ? "text-right" : "text-left"}`}>
+                  <p className={`text-sm font-medium mb-3 text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
+                    {t("consultation_ready")}
+                  </p>
+                  <Link
+                    href={`/consultation/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`}
+                    className={`inline-block w-full text-center px-6 py-3 rounded-xl text-sm font-medium text-white mb-4 ${isRtl ? "font-arabic" : ""}`}
+                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+                  >
+                    {t("join_consultation")}
+                  </Link>
+                  <ul className={`text-sm text-[#6b7280] space-y-1 ${isRtl ? "font-arabic" : ""}`}>
+                    <li>{t("check_inbox")}</li>
+                    <li>{t("add_calendar")}</li>
+                    <li>{t("intake_sent")}</li>
+                  </ul>
+                </div>
+              )}
+
+              {copy.tone === "confirmed" && !(id && token) && (
                 <div className={`p-5 rounded-2xl border mb-8 bg-[#0d7377]/6 border-[#0d7377]/15 ${isRtl ? "text-right" : "text-left"}`}>
                   <p className={`text-sm font-medium mb-1 text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
                     {t("whats_next")}

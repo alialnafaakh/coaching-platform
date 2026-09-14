@@ -112,6 +112,31 @@ export type UiStrings = {
   loading_booking: string;
   booking_not_found: string;
   booking_missing_access: string;
+  join_consultation: string;
+  open_consultation: string;
+  consultation_unavailable: string;
+  consultation_opens_at: string;
+  consultation_window_closed: string;
+  enter_consultation: string;
+  connecting: string;
+  connected: string;
+  reconnecting: string;
+  call_error: string;
+  left_call: string;
+  mic_on: string;
+  mic_off: string;
+  camera_on: string;
+  camera_off: string;
+  leave_call: string;
+  end_consultation: string;
+  ending_consultation: string;
+  end_consultation_confirm: string;
+  waiting_for_other: string;
+  you_label: string;
+  other_participant: string;
+  media_permission_hint: string;
+  consultation_room_title: string;
+  consultation_ready: string;
 };
 
 export type TranslationKey = keyof UiStrings;
@@ -271,6 +296,31 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     loading_booking: "Loading your booking…",
     booking_not_found: "Booking not found",
     booking_missing_access: "This booking link is missing or incomplete.",
+    join_consultation: "Join consultation",
+    open_consultation: "Open consultation",
+    consultation_unavailable: "Consultation unavailable",
+    consultation_opens_at: "You can join from",
+    consultation_window_closed: "The join window for this consultation has ended.",
+    enter_consultation: "Enter consultation room",
+    connecting: "Connecting…",
+    connected: "Connected",
+    reconnecting: "Reconnecting…",
+    call_error: "Unable to connect to the consultation room.",
+    left_call: "You left the consultation.",
+    mic_on: "Mute",
+    mic_off: "Unmute",
+    camera_on: "Camera off",
+    camera_off: "Camera on",
+    leave_call: "Leave",
+    end_consultation: "End consultation",
+    ending_consultation: "Ending…",
+    end_consultation_confirm: "End this consultation for everyone? This cannot be undone.",
+    waiting_for_other: "Waiting for the other participant…",
+    you_label: "You",
+    other_participant: "Participant",
+    media_permission_hint: "Camera or microphone access was denied. You can still join with devices off.",
+    consultation_room_title: "Consultation room",
+    consultation_ready: "Your consultation room is ready.",
   },
   ar: {
     book_session: "احجز جلسة",
@@ -414,6 +464,31 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     loading_booking: "جاري تحميل حجزك…",
     booking_not_found: "لم يتم العثور على الحجز",
     booking_missing_access: "رابط هذا الحجز ناقص أو غير مكتمل.",
+    join_consultation: "الانضمام إلى الاستشارة",
+    open_consultation: "فتح الاستشارة",
+    consultation_unavailable: "الاستشارة غير متاحة",
+    consultation_opens_at: "يمكنك الانضمام ابتداءً من",
+    consultation_window_closed: "انتهت مهلة الانضمام إلى هذه الاستشارة.",
+    enter_consultation: "الدخول إلى غرفة الاستشارة",
+    connecting: "جاري الاتصال…",
+    connected: "متصل",
+    reconnecting: "إعادة الاتصال…",
+    call_error: "تعذّر الاتصال بغرفة الاستشارة.",
+    left_call: "غادرت الاستشارة.",
+    mic_on: "كتم الصوت",
+    mic_off: "إلغاء الكتم",
+    camera_on: "إيقاف الكاميرا",
+    camera_off: "تشغيل الكاميرا",
+    leave_call: "مغادرة",
+    end_consultation: "إنهاء الاستشارة",
+    ending_consultation: "جاري الإنهاء…",
+    end_consultation_confirm: "إنهاء هذه الاستشارة للجميع؟ لا يمكن التراجع عن ذلك.",
+    waiting_for_other: "بانتظار المشارك الآخر…",
+    you_label: "أنت",
+    other_participant: "المشارك",
+    media_permission_hint: "تم رفض إذن الكاميرا أو الميكروفون. يمكنك الانضمام مع إيقاف الأجهزة.",
+    consultation_room_title: "غرفة الاستشارة",
+    consultation_ready: "غرفة الاستشارة جاهزة.",
   }
 };
 
