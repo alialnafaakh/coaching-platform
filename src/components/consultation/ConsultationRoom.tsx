@@ -74,10 +74,10 @@ function CallControls({
   };
 
   const btn =
-    "px-4 py-2.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50";
+    "px-3 sm:px-4 py-2.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50";
 
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+    <div className={`flex flex-wrap items-center justify-center gap-2 sm:gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
       <button
         type="button"
         onClick={toggleMic}
@@ -233,6 +233,28 @@ function roomHostOnly(roomUrl: string): string {
   }
 }
 
+/** TEMP: safe mobile/runtime metadata for DevTools — never includes tokens or secrets. */
+function safeClientRuntimeMeta() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return { env: "non-browser" as const };
+  }
+  const ua = navigator.userAgent || "";
+  return {
+    isSecureContext: Boolean(window.isSecureContext),
+    mediaDevicesSupported: Boolean(navigator.mediaDevices?.getUserMedia),
+    // Coarse UA class only — not the full userAgent string.
+    uaClass: /iPhone|iPad|iPod/i.test(ua)
+      ? "ios"
+      : /Android/i.test(ua)
+        ? "android"
+        : /Mobile/i.test(ua)
+          ? "mobile-other"
+          : "desktop-or-other",
+    viewportW: window.innerWidth,
+    viewportH: window.innerHeight,
+  };
+}
+
 function ActiveCall({
   role,
   onLeave,
@@ -307,12 +329,14 @@ export default function ConsultationRoom(props: RoomProps) {
     setStarting(true);
     setBootError("");
     let call: DailyCall | null = null;
+    let mediaPreflight: "ok" | "denied_or_failed" | "unsupported" | "skipped" = "skipped";
     const onCallError = (ev: unknown) => {
       console.error("[DailyDiag] call.on(error) before/during join", {
         ...safeDailyErrorFields(ev),
         meetingState: call?.meetingState?.() ?? null,
         role,
         roomHost: roomHostOnly(roomUrl),
+        ...safeClientRuntimeMeta(),
       });
     };
     const onCallNonFatal = (ev: unknown) => {
@@ -321,6 +345,7 @@ export default function ConsultationRoom(props: RoomProps) {
         meetingState: call?.meetingState?.() ?? null,
         role,
         roomHost: roomHostOnly(roomUrl),
+        ...safeClientRuntimeMeta(),
       });
     };
 
@@ -331,6 +356,7 @@ export default function ConsultationRoom(props: RoomProps) {
         console.warn("[DailyDiag] existing call instance before create", {
           meetingState: existing.meetingState?.(),
           role,
+          ...safeClientRuntimeMeta(),
         });
       }
 
@@ -338,10 +364,19 @@ export default function ConsultationRoom(props: RoomProps) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
           stream.getTracks().forEach((track) => track.stop());
-        } catch {
+          mediaPreflight = "ok";
+        } catch (mediaErr) {
+          mediaPreflight = "denied_or_failed";
           // Allow join even if permissions denied; Daily can still connect with devices off.
           setBootError(t("media_permission_hint"));
+          console.warn("[DailyDiag] media preflight failed", {
+            ...safeDailyErrorFields(mediaErr),
+            role,
+            ...safeClientRuntimeMeta(),
+          });
         }
+      } else {
+        mediaPreflight = "unsupported";
       }
 
       call = DailyIframe.createCallObject({
@@ -359,6 +394,8 @@ export default function ConsultationRoom(props: RoomProps) {
         meetingState: call.meetingState?.(),
         role,
         roomHost: roomHostOnly(roomUrl),
+        mediaPreflight,
+        ...safeClientRuntimeMeta(),
       });
     } catch (err) {
       console.error("[DailyDiag] Daily join failed", {
@@ -366,6 +403,7 @@ export default function ConsultationRoom(props: RoomProps) {
         meetingState: call?.meetingState?.() ?? null,
         role,
         roomHost: roomHostOnly(roomUrl),
+        mediaPreflight,
         hadExistingInstance: Boolean(DailyIframe.getCallInstance?.()),
         // Help distinguish Error vs plain event-shaped throws.
         thrownValueType: err === null ? "null" : typeof err,
@@ -374,6 +412,7 @@ export default function ConsultationRoom(props: RoomProps) {
           err && typeof err === "object"
             ? Object.keys(err as object).slice(0, 20)
             : [],
+        ...safeClientRuntimeMeta(),
       });
       setBootError(t("call_error"));
       try {

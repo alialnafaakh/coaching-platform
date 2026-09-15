@@ -115,8 +115,8 @@ export default function AdminConsultationPage() {
 
   if (join) {
     return (
-      <div className="min-h-[70vh] rounded-3xl bg-[#0f172a] text-white p-4 md:p-6">
-        <h1 className={`text-xl mb-4 ${isRtl ? "font-arabic text-right" : ""}`}>
+      <div className="min-h-[70vh] w-full min-w-0 rounded-2xl md:rounded-3xl bg-[#0f172a] text-white p-3 sm:p-4 md:p-6 -mx-1 sm:mx-0">
+        <h1 className={`text-lg sm:text-xl mb-4 break-words ${isRtl ? "font-arabic text-right" : ""}`}>
           {t("consultation_room_title")} — {appt?.client_name || ""}
         </h1>
         <ConsultationRoom

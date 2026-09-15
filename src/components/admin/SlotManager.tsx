@@ -253,7 +253,7 @@ export default function SlotManager() {
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {weekDays.map((day) => {
             const key = dateKey(day);
             const count = slots.filter((slot) => slot.date === key && !slot.is_booked).length;
@@ -264,17 +264,17 @@ export default function SlotManager() {
               <button
                 key={key}
                 onClick={() => setSelectedDate(day)}
-                className={`rounded-xl border p-3 text-center transition-all ${
+                className={`rounded-xl border p-1.5 sm:p-3 text-center transition-all min-w-0 ${
                   selected
                     ? "border-[#0d7377] bg-[#0d7377] text-white shadow-sm"
                     : "border-[#e5e0d8] bg-[#faf9f6] hover:border-[#0d7377]/40"
                 }`}
               >
-                <p className={`text-[11px] uppercase tracking-wide ${selected ? "text-white/70" : "text-[#9ca3af]"}`}>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-wide ${selected ? "text-white/70" : "text-[#9ca3af]"}`}>
                   {format(day, "EEE")}
                 </p>
-                <p className="text-lg font-semibold leading-tight mt-0.5">{format(day, "d")}</p>
-                <p className={`text-[11px] mt-1 ${selected ? "text-white/80" : "text-[#0d7377]"}`}>
+                <p className="text-base sm:text-lg font-semibold leading-tight mt-0.5">{format(day, "d")}</p>
+                <p className={`text-[10px] sm:text-[11px] mt-1 truncate ${selected ? "text-white/80" : "text-[#0d7377]"}`}>
                   {count > 0 ? `${count} open` : isToday ? "today" : booked > 0 ? `${booked} booked` : "closed"}
                 </p>
               </button>
