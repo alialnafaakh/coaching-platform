@@ -15,15 +15,15 @@ const policies = {
       sections: [
         {
           heading: "Session Pricing",
-          body: "Sessions are currently offered at a special rate of $50 (regular price $100). Full payment is required at the time of booking to secure your appointment.",
+          body: "Sessions are currently offered at a special rate of $50 (regular price $100). Pricing is shown at booking. Payment instructions are shared after you reserve a time; your session is confirmed once payment is completed.",
         },
         {
           heading: "Payment Processing",
-          body: "All payments are processed securely through our payment provider. Transactions are protected by SSL/TLS encryption. We accept major credit and debit cards where supported.",
+          body: "Online card checkout is not active on this site yet. After you book, we will share how to complete payment for your reserved session. When an online payment option is enabled, transactions will be handled by a third-party provider.",
         },
         {
           heading: "Data Security",
-          body: "Your payment information is never stored on our servers. Card data is handled exclusively by our payment provider under industry security standards. We only receive confirmation that payment was successful.",
+          body: "We do not store card or bank details on our servers. If you pay through a future online provider, card data will be handled by that provider under their security standards. We only receive confirmation that payment was successful.",
         },
         {
           heading: "Currency",
@@ -73,7 +73,7 @@ const policies = {
         },
         {
           heading: "Payment Information",
-          body: "All payment data is processed and stored exclusively by our payment provider. We never see, access, or store your card or bank details on our systems.",
+          body: "We do not collect or store card or bank details on this website. When online payment is enabled, payment data will be processed exclusively by the payment provider.",
         },
         {
           heading: "Confidentiality",
@@ -110,15 +110,15 @@ const policies = {
       sections: [
         {
           heading: "أسعار الجلسات",
-          body: "تُقدَّم الجلسات حاليًا بسعر خاص يبلغ 50 دولارًا (السعر الأصلي 100 دولار). يُشترط سداد المبلغ كاملًا وقت الحجز لتأكيد موعدك.",
+          body: "تُقدَّم الجلسات حاليًا بسعر خاص يبلغ 50 دولارًا (السعر الأصلي 100 دولار). تظهر الأسعار عند الحجز. تُشارك تعليمات الدفع بعد حجز الوقت؛ وتُؤكَّد الجلسة بعد إتمام الدفع.",
         },
         {
           heading: "معالجة المدفوعات",
-          body: "تُعالَج جميع المدفوعات بأمان عبر مزود الدفع الخاص بنا. وتُحمى المعاملات بتشفير SSL/TLS. نقبل بطاقات الائتمان والخصم الرئيسية حيثما كانت مدعومة.",
+          body: "الدفع الإلكتروني بالبطاقة غير مفعّل على هذا الموقع حاليًا. بعد الحجز، سنشارك طريقة إتمام الدفع لجلستك المحجوزة. عند تفعيل خيار الدفع الإلكتروني، ستُعالَج المعاملات عبر مزود خارجي.",
         },
         {
           heading: "أمان البيانات",
-          body: "لا يتم تخزين معلومات الدفع الخاصة بك على خوادمنا. تُعالَج بيانات البطاقات حصريًا من قِبل مزود الدفع وفق معايير أمان الصناعة. نحن نتلقى فقط تأكيدًا بنجاح الدفع.",
+          body: "لا نخزّن بيانات البطاقات أو الحسابات المصرفية على خوادمنا. إذا دفعت عبر مزود إلكتروني مستقبلاً، ستُعالَج بيانات البطاقة من قِبله وفق معاييره الأمنية. نتلقى فقط تأكيدًا بنجاح الدفع.",
         },
         {
           heading: "العملة",
@@ -168,7 +168,7 @@ const policies = {
         },
         {
           heading: "معلومات الدفع",
-          body: "تُعالَج جميع بيانات الدفع وتُخزَّن حصريًا من قِبل مزود الدفع. لا نرى أو نصل إلى أو نخزّن تفاصيل بطاقتك أو حسابك المصرفي على أنظمتنا.",
+          body: "لا نجمع أو نخزّن تفاصيل البطاقات أو الحسابات المصرفية على هذا الموقع. عند تفعيل الدفع الإلكتروني، ستُعالَج بيانات الدفع حصريًا من قِبل مزود الدفع.",
         },
         {
           heading: "السرية المهنية",

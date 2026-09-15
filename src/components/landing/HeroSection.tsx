@@ -2,6 +2,8 @@
 
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const floatingOrb: Variants = {
   animate: {
@@ -11,26 +13,32 @@ const floatingOrb: Variants = {
   },
 };
 
-import { useLanguage } from "@/context/LanguageContext";
-
 export default function HeroSection({ content, availability = "Accepting New Clients" }: { content?: any; availability?: string }) {
   const { isRtl, t } = useLanguage();
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#faf9f6]">
-      {/* Ambient background orbs */}
+      {/* Ambient background orbs — static when reduced motion */}
       <motion.div
-        variants={floatingOrb}
-        animate="animate"
+        variants={reduceMotion ? undefined : floatingOrb}
+        animate={reduceMotion ? undefined : "animate"}
         className={`absolute top-20 ${isRtl ? "left-10" : "right-10"} w-80 h-80 rounded-full blur-3xl opacity-20`}
         style={{ background: "radial-gradient(circle, #0d7377, transparent)" }}
       />
       <motion.div
-        variants={floatingOrb}
-        animate="animate"
+        variants={reduceMotion ? undefined : floatingOrb}
+        animate={reduceMotion ? undefined : "animate"}
         style={{
           background: "radial-gradient(circle, #d4a843, transparent)",
-          animationDelay: "3s",
         }}
         className={`absolute bottom-20 ${isRtl ? "right-10" : "left-10"} w-64 h-64 rounded-full blur-3xl opacity-15`}
       />
@@ -43,7 +51,11 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           transition={{ duration: 0.6 }}
           className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-[#0d7377]/8 border border-[#0d7377]/20"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0d7377] animate-pulse" />
+          <span
+            className={`w-1.5 h-1.5 rounded-full bg-[#0d7377] ${
+              reduceMotion ? "" : "animate-pulse"
+            }`}
+          />
           <span className={`text-xs font-medium text-[#0d7377] tracking-wider uppercase ${isRtl ? "font-arabic" : ""}`}>
             {availability}
           </span>

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { fetchApprovedPublicReviews } from "@/lib/reviews";
+import {
+  fetchApprovedPublicReviews,
+  summarizePublicReviews,
+} from "@/lib/reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +12,8 @@ const ROLE_AR = "عميل استشارة موثّقة";
 
 /**
  * Public approved reviews only. Never returns pending/rejected rows.
+ * Aggregate average is derived from the same public rows (one DB query).
+ * Response never includes appointment ids, email, join_token, or other private fields.
  */
 export async function GET(req: NextRequest) {
   const langParam = req.nextUrl.searchParams.get("lang");
@@ -17,7 +22,12 @@ export async function GET(req: NextRequest) {
   try {
     const db = getSupabaseAdmin();
     const reviews = await fetchApprovedPublicReviews(db, ROLE_EN, ROLE_AR, lang);
-    return NextResponse.json({ reviews });
+    const summary = summarizePublicReviews(reviews);
+    return NextResponse.json({
+      reviews,
+      average_rating: summary.average_rating,
+      review_count: summary.review_count,
+    });
   } catch (err) {
     console.error("Public reviews fetch error:", err instanceof Error ? err.name : "Error");
     return NextResponse.json({ error: "Unable to load reviews." }, { status: 500 });

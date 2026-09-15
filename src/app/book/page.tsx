@@ -68,15 +68,15 @@ export default function BookPage() {
   return (
     <>
       <Navbar />
-      <main className={`min-h-screen bg-[#faf9f6] pt-24 pb-20 px-6 ${isRtl ? "text-right" : "text-left"}`}>
-        <div className="max-w-xl mx-auto">
+      <main className={`min-h-screen bg-[#faf9f6] pt-24 pb-20 px-4 sm:px-6 ${isRtl ? "text-right" : "text-left"}`}>
+        <div className="max-w-xl mx-auto min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-10"
+            className="text-center mb-8 sm:mb-10"
           >
             <h1
-              className={`text-4xl text-[#1a1a2e] mb-2 ${isRtl ? "font-arabic-display" : ""}`}
+              className={`text-3xl sm:text-4xl text-[#1a1a2e] mb-2 ${isRtl ? "font-arabic-display" : ""}`}
               style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
             >
               {t("book_session")}
@@ -90,28 +90,44 @@ export default function BookPage() {
             />
           </motion.div>
 
-          <div className={`flex items-center justify-center gap-2 mb-10 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            {steps.map((label, i) => (
-              <div key={label} className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
+          {/* Step indicator: labels always visible on mobile (not numbers-only) */}
+          <div
+            className={`flex flex-col gap-2 mb-8 sm:mb-10 ${isRtl ? "items-stretch" : ""}`}
+            aria-label={isRtl ? "خطوات الحجز" : "Booking steps"}
+          >
+            <div
+              className={`flex items-stretch justify-between gap-1.5 sm:gap-2 ${
+                isRtl ? "flex-row-reverse" : "flex-row"
+              }`}
+            >
+              {steps.map((label, i) => (
                 <div
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    i <= stepIndex
-                      ? "bg-[#0d7377] text-white"
-                      : "bg-[#f0ede6] text-[#9ca3af]"
+                  key={label}
+                  className={`flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-all ${
+                    i === stepIndex
+                      ? "bg-[#0d7377] text-white shadow-sm"
+                      : i < stepIndex
+                        ? "bg-[#0d7377]/15 text-[#0d7377]"
+                        : "bg-[#f0ede6] text-[#9ca3af]"
                   } ${isRtl ? "font-arabic" : ""}`}
+                  aria-current={i === stepIndex ? "step" : undefined}
                 >
-                  <span>{i + 1}</span>
-                  <span className="hidden sm:block">{label}</span>
+                  <span className="flex-shrink-0 opacity-80" aria-hidden>
+                    {i + 1}
+                  </span>
+                  <span className="truncate">{label}</span>
                 </div>
-                {i < steps.length - 1 && (
-                  <div
-                    className={`w-6 h-px transition-colors ${
-                      i < stepIndex ? "bg-[#0d7377]" : "bg-[#e5e0d8]"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
+            <p
+              className={`text-center text-xs text-[#6b7280] sm:hidden ${
+                isRtl ? "font-arabic" : ""
+              }`}
+            >
+              {isRtl
+                ? `الخطوة ${stepIndex + 1} من ${steps.length}: ${steps[stepIndex]}`
+                : `Step ${stepIndex + 1} of ${steps.length}: ${steps[stepIndex]}`}
+            </p>
           </div>
 
           <motion.div
@@ -119,7 +135,7 @@ export default function BookPage() {
             initial={{ opacity: 0, x: isRtl ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-3xl shadow-sm border border-[#e5e0d8] p-6 md:p-8"
+            className="bg-white rounded-3xl shadow-sm border border-[#e5e0d8] p-4 sm:p-6 md:p-8"
           >
             {step === "date" && (
               <div>

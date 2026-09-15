@@ -13,14 +13,46 @@ interface Testimonial {
   verified?: boolean;
 }
 
-export default function TestimonialsSection({ title = "Stories of Change" }: { title?: string }) {
+function StarRow({
+  stars,
+  isRtl,
+  label,
+}: {
+  stars: number;
+  isRtl: boolean;
+  label: string;
+}) {
+  return (
+    <div
+      className={`flex gap-0.5 ${isRtl ? "flex-row-reverse" : "flex-row"}`}
+      role="img"
+      aria-label={label}
+    >
+      {[1, 2, 3, 4, 5].map((idx) => (
+        <span
+          key={idx}
+          className="text-sm"
+          aria-hidden
+          style={{ color: idx <= stars ? "#d4a843" : "#e5e0d8" }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export default function TestimonialsSection({
+  title = "Stories of Change",
+}: {
+  title?: string;
+}) {
   const { isRtl, t, lang } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
-  // Curated testimonials from site_content + approved verified reviews (public API).
   useEffect(() => {
     let cancelled = false;
 
@@ -36,15 +68,21 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
         const saved = contentData?.content?.[lang]?.testimonials;
         const curated: Testimonial[] =
           saved && saved.length > 0 ? saved : t("testimonials_data");
+        // Only API-backed approved reviews carry verified: true
         const verified: Testimonial[] = Array.isArray(reviewsData.reviews)
-          ? reviewsData.reviews
+          ? reviewsData.reviews.map((r: Testimonial) => ({
+              ...r,
+              verified: r.verified === true,
+            }))
           : [];
 
         if (!cancelled) {
-          setTestimonials([...verified, ...curated]);
+          setTestimonials([...verified, ...curated.map((c) => ({ ...c, verified: false }))]);
         }
       } catch {
-        if (!cancelled) setTestimonials(t("testimonials_data"));
+        if (!cancelled) {
+          setTestimonials(t("testimonials_data").map((c) => ({ ...c, verified: false })));
+        }
       }
     };
 
@@ -61,7 +99,9 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
           <motion.p
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
-            className={`text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4 ${isRtl ? "font-arabic" : ""}`}
+            className={`text-xs uppercase tracking-widest text-[#0d7377] font-medium mb-4 ${
+              isRtl ? "font-arabic" : ""
+            }`}
           >
             {title}
           </motion.p>
@@ -69,7 +109,9 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: 0.1 }}
-            className={`text-4xl md:text-5xl text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
+            className={`text-4xl md:text-5xl text-[#1a1a2e] ${
+              isRtl ? "font-arabic-display" : ""
+            }`}
             style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
             {t("what_clients_say")}
@@ -77,52 +119,79 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
         </div>
 
         <div className={`grid md:grid-cols-3 gap-6 ${isRtl ? "rtl" : "ltr"}`}>
-          {testimonials.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.55, delay: 0.1 + i * 0.15 }}
-              className={`bg-white rounded-2xl p-7 border border-[#e5e0d8] flex flex-col gap-5 hover:shadow-md transition-shadow duration-300 ${isRtl ? "text-right" : "text-left"}`}
-            >
-              {/* Stars */}
-              <div className={`flex gap-0.5 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-                {[1, 2, 3, 4, 5].map((idx) => (
-                  <span
-                    key={idx}
-                    className="text-sm"
-                    style={{ color: idx <= (item.stars ?? 5) ? "#d4a843" : "#e5e0d8" }}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-
-              {/* Quote */}
-              <blockquote className={`text-sm text-[#374151] leading-relaxed flex-1 ${isRtl ? "font-arabic" : ""}`}>
-                {isRtl ? "«" : "\u201c"}{item.quote}{isRtl ? "»" : "\u201d"}
-              </blockquote>
-
-              {/* Author + date */}
-              <div className={`flex items-center gap-3 pt-2 border-t border-[#f3f0ea] ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
+          {testimonials.map((item, i) => {
+            const starCount = item.stars ?? 5;
+            const ratingLabel = t("rating_out_of")
+              .replace("{n}", String(starCount))
+              .replace("{max}", "5");
+            return (
+              <motion.div
+                key={`${item.name}-${i}-${item.verified ? "v" : "c"}`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.55, delay: 0.1 + i * 0.15 }}
+                className={`bg-white rounded-2xl p-7 border border-[#e5e0d8] flex flex-col gap-5 hover:shadow-md transition-shadow duration-300 ${
+                  isRtl ? "text-right" : "text-left"
+                }`}
+              >
                 <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #0d7377, #d4a843)" }}
+                  className={`flex flex-wrap items-center gap-2 ${
+                    isRtl ? "flex-row-reverse" : ""
+                  }`}
                 >
-                  {item.name?.charAt(0) ?? "?"}
+                  <StarRow stars={starCount} isRtl={isRtl} label={ratingLabel} />
+                  {item.verified === true && (
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium tracking-wide uppercase bg-[#0d7377]/10 text-[#0d7377] border border-[#0d7377]/20 ${
+                        isRtl ? "font-arabic normal-case tracking-normal" : ""
+                      }`}
+                    >
+                      {t("verified_session")}
+                    </span>
+                  )}
                 </div>
-                <div className={`flex-1 ${isRtl ? "text-right" : "text-left"}`}>
-                  <p className={`text-sm font-medium text-[#1a1a2e] ${isRtl ? "font-arabic" : ""}`}>
-                    {item.name}
-                  </p>
-                  <p className={`text-xs text-[#9ca3af] ${isRtl ? "font-arabic" : ""}`}>
-                    {item.role}
-                    {item.date ? ` · ${item.date}` : ""}
-                  </p>
+
+                <blockquote
+                  className={`text-sm text-[#374151] leading-relaxed flex-1 ${
+                    isRtl ? "font-arabic" : ""
+                  }`}
+                >
+                  {isRtl ? "«" : "\u201c"}
+                  {item.quote}
+                  {isRtl ? "»" : "\u201d"}
+                </blockquote>
+
+                <div
+                  className={`flex items-center gap-3 pt-2 border-t border-[#f3f0ea] ${
+                    isRtl ? "flex-row-reverse" : "flex-row"
+                  }`}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #0d7377, #d4a843)" }}
+                    aria-hidden
+                  >
+                    {item.name?.charAt(0) ?? "?"}
+                  </div>
+                  <div className={`flex-1 min-w-0 ${isRtl ? "text-right" : "text-left"}`}>
+                    <p
+                      className={`text-sm font-medium text-[#1a1a2e] ${
+                        isRtl ? "font-arabic" : ""
+                      }`}
+                    >
+                      {item.name}
+                    </p>
+                    <p
+                      className={`text-xs text-[#9ca3af] ${isRtl ? "font-arabic" : ""}`}
+                    >
+                      {item.role}
+                      {item.date ? ` · ${item.date}` : ""}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

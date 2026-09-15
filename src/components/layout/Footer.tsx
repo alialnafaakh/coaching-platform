@@ -53,11 +53,11 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
       ];
 
   return (
-    <footer className="bg-[#1a1a2e] text-white py-12 px-6">
+    <footer className="bg-[#1a1a2e] text-white py-12 px-4 sm:px-6 overflow-x-hidden">
       <div className="max-w-6xl mx-auto">
         <div className={`flex flex-col md:flex-row justify-between items-start gap-8 ${isRtl ? "md:flex-row-reverse text-right" : "text-left"}`}>
           {/* Brand */}
-          <div>
+          <div className="min-w-0 max-w-full">
             <p
               className={`text-2xl mb-2 ${isRtl ? "font-arabic-display" : ""}`}
               style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
@@ -65,20 +65,19 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
               {siteName}
             </p>
             <p className={`text-sm text-white/50 max-w-xs ${isRtl ? "font-arabic" : ""}`}>
-              {isRtl 
-                ? "الكوتشينج البيولوجي النفسي الاجتماعي — حيث يلتقي العلم بالقلب." 
+              {isRtl
+                ? "الكوتشينج البيولوجي النفسي الاجتماعي — حيث يلتقي العلم بالقلب."
                 : "Biopsychosocial Relationship Coaching — where science meets the heart."}
             </p>
 
-            {/* Social Media Icons */}
-            <div className={`mt-5 flex gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+            <div className={`mt-5 flex flex-wrap gap-3 ${isRtl ? "flex-row-reverse justify-end" : ""}`}>
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={social.label}
+                  aria-label={`${social.label} @${social.handle}`}
                   title={`@${social.handle}`}
                   className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 ${social.hoverColor} hover:bg-white/10 hover:border-white/20 transition-all duration-300`}
                 >
@@ -126,13 +125,13 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
           </div>
 
           {/* Contact */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 min-w-0 max-w-full">
             <p className={`text-xs uppercase tracking-widest text-white/40 mb-1 ${isRtl ? "font-arabic" : ""}`}>
               {t("contact")}
             </p>
             <a
               href="mailto:biopsychosocial.site@gmail.com"
-              className="text-sm text-white/60 hover:text-white transition-colors"
+              className="text-sm text-white/60 hover:text-white transition-colors break-all"
             >
               biopsychosocial.site@gmail.com
             </a>
@@ -146,38 +145,15 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className={`mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/30 ${isRtl ? "md:flex-row-reverse" : ""}`}>
-          <p className={isRtl ? "font-arabic" : ""}>© {new Date().getFullYear()} {siteName}. {t("all_rights")}</p>
-
-          {/* Social handles in bottom bar */}
-          <div className={`flex items-center gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
-            {socialLinks.map((social) => (
-              <a
-                key={social.label + "-bottom"}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-1.5 hover:text-white/60 transition-colors ${social.hoverColor}`}
-              >
-                <span className="w-3.5 h-3.5">{social.icon}</span>
-                <span>@{social.handle}</span>
-              </a>
-            ))}
-          </div>
-
-          <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
-            <Link href="/policies" className={`hover:text-white/60 transition-colors ${isRtl ? "font-arabic" : ""}`}>
-              {isRtl ? "السياسات" : "Policies"}
-            </Link>
-            <span className="text-white/10">·</span>
-            <Link href="/admin" className={`hover:text-white/60 transition-colors flex items-center gap-1 ${isRtl ? "font-arabic" : ""}`}>
-              {t("admin")} {isRtl ? "↖" : "↗"}
-            </Link>
-          </div>
+        <div className={`mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/30 ${isRtl ? "sm:flex-row-reverse" : ""}`}>
+          <p className={isRtl ? "font-arabic" : ""}>
+            © {new Date().getFullYear()} {siteName}. {t("all_rights")}
+          </p>
+          <Link href="/policies" className={`hover:text-white/60 transition-colors ${isRtl ? "font-arabic" : ""}`}>
+            {isRtl ? "السياسات" : "Policies"}
+          </Link>
         </div>
       </div>
     </footer>
   );
 }
-

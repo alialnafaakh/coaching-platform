@@ -60,6 +60,9 @@ export type UiStrings = {
   about_highlight: string;
   lives_transformed: string;
   client_rating: string;
+  client_loved: string;
+  verified_session: string;
+  rating_out_of: string;
   tags: string[];
   services_data: UiService[];
   what_clients_say: string;
@@ -183,7 +186,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     full_name: "Full Name",
     email_address: "Email Address",
     what_brings: "What brings you here? (optional)",
-    secure_payment: "Secure payment · SSL encrypted",
+    secure_payment: "Payment details shared after booking",
     admin: "Admin",
     choose_payment: "Choose Payment Method",
     pay_patreon: "Pay via Patreon",
@@ -202,13 +205,16 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     cta_eyebrow: "Ready when you are",
     cta_headline: "The relationship you want starts with one honest session.",
     cta_subheadline: "Book your session today. Pick a time that works for you — including same-day openings.",
-    cta_footer: "Secure payment · Refundable if needed",
+    cta_footer: "Clear pricing · Flexible booking",
     areas_of_focus: "Areas of focus",
     about_maryem: "About Maryem",
     about_headline: "Relationships are biological, psychological, and social — all at once.",
     about_highlight: "biological,",
     lives_transformed: "lives transformed through compassionate coaching",
     client_rating: "Avg. client rating",
+    client_loved: "Trusted by clients",
+    verified_session: "Verified consultation",
+    rating_out_of: "{n} out of {max} stars",
     tags: ["Attachment Theory", "Somatic Coaching", "Systemic Therapy", "Emotion Regulation", "Communication"],
     services_data: [
       {
@@ -263,9 +269,9 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     pricing_headline: "One session. Real change.",
     one_on_one: "1-on-1 Coaching Session",
     pricing_badge: "Limited Time Offer",
-    pricing_footer: "Secure payment",
+    pricing_footer: "Private 1-on-1 session",
     reserve_spot: "Reserve My Spot",
-    pricing_disclaimer: "Secure checkout · No subscriptions · Cancel anytime",
+    pricing_disclaimer: "Clear pricing · No subscriptions · Cancel anytime",
     booking_notes_placeholder: "Brief context about what you'd like to work on…",
     booking_name_placeholder: "Your full name",
     booking_email_placeholder: "you@example.com",
@@ -363,7 +369,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     full_name: "الاسم الكامل",
     email_address: "البريد الإلكتروني",
     what_brings: "ما الذي يأتي بك إلى هنا؟ (اختياري)",
-    secure_payment: "دفع آمن · مشفر SSL",
+    secure_payment: "تفاصيل الدفع تُشارك بعد الحجز",
     admin: "لوحة التحكم",
     choose_payment: "اختر طريقة الدفع",
     pay_patreon: "الدفع عبر Patreon",
@@ -382,13 +388,16 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     cta_eyebrow: "جاهزون عندما تكونين جاهزة",
     cta_headline: "العلاقة التي تطمحين إليها تبدأ بجلسة واحدة صادقة.",
     cta_subheadline: "احجزي جلستك اليوم. اختاري الوقت المناسب لك — بما في ذلك المواعيد المتاحة في نفس اليوم.",
-    cta_footer: "دفع آمن · قابل للاسترداد إذا لزم الأمر",
+    cta_footer: "أسعار واضحة · حجز مرن",
     areas_of_focus: "مجالات التركيز",
     about_maryem: "عن مريم",
     about_headline: "العلاقات بيولوجية ونفسية واجتماعية — كلها في وقت واحد.",
     about_highlight: "بيولوجية،",
     lives_transformed: "حياة تحولت من خلال الكوتشينج الرحيم",
     client_rating: "متوسط تقييم العملاء",
+    client_loved: "موثوقة لدى العملاء",
+    verified_session: "استشارة موثّقة",
+    rating_out_of: "{n} من أصل {max} نجوم",
     tags: ["نظرية التعلق", "الكوتشينج الجسدي", "العلاج النظامي", "تنظيم المشاعر", "التواصل"],
     services_data: [
       {
@@ -443,9 +452,9 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     pricing_headline: "جلسة واحدة. تغيير حقيقي.",
     one_on_one: "جلسة كوتشينج خاصة (1 لـ 1)",
     pricing_badge: "عرض لفترة محدودة",
-    pricing_footer: "دفع آمن",
+    pricing_footer: "جلسة خاصة 1 لـ 1",
     reserve_spot: "احجز مكاني الآن",
-    pricing_disclaimer: "دفع آمن · لا توجد اشتراكات · إلغاء في أي وقت",
+    pricing_disclaimer: "أسعار واضحة · لا توجد اشتراكات · إلغاء في أي وقت",
     booking_notes_placeholder: "سياق موجز حول ما ترغبين في العمل عليه...",
     booking_name_placeholder: "اسمك الكامل",
     booking_email_placeholder: "you@example.com",

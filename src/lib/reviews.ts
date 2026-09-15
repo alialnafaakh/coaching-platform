@@ -35,6 +35,15 @@ function normalizeAppointmentRelation(raw: unknown): {
   return { client_name: appt.client_name, status: appt.status };
 }
 
+/** Status-only join parse — does not require client_name. */
+function appointmentStatusFromRelation(raw: unknown): string | null {
+  if (!raw) return null;
+  const row = Array.isArray(raw) ? raw[0] : raw;
+  if (!row || typeof row !== "object") return null;
+  const status = (row as { status?: unknown }).status;
+  return typeof status === "string" ? status : null;
+}
+
 export function publicReviewDisplayName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "Client";
@@ -118,6 +127,64 @@ export type PublicApprovedReview = {
   stars: number;
   verified: true;
 };
+
+export type PublicReviewSummary = {
+  average_rating: number | null;
+  review_count: number;
+};
+
+/**
+ * Average of approved verified reviews only (completed appointments).
+ * Returns null average when none exist — never fabricates 5.0.
+ * Single query; selects only rating + appointment status (no private fields).
+ */
+export async function fetchApprovedReviewSummary(
+  db: SupabaseClient
+): Promise<PublicReviewSummary> {
+  const { data, error } = await db
+    .from("consultation_reviews")
+    .select("rating, appointments(status)")
+    .eq("moderation_status", "approved");
+
+  if (error || !data?.length) {
+    return { average_rating: null, review_count: 0 };
+  }
+
+  const ratings: number[] = [];
+  for (const row of data) {
+    if (appointmentStatusFromRelation(row.appointments) !== "completed") continue;
+    const n = typeof row.rating === "number" ? row.rating : Number(row.rating);
+    if (Number.isInteger(n) && n >= 1 && n <= 5) ratings.push(n);
+  }
+
+  if (ratings.length === 0) {
+    return { average_rating: null, review_count: 0 };
+  }
+
+  const sum = ratings.reduce((a, b) => a + b, 0);
+  const avg = Math.round((sum / ratings.length) * 10) / 10;
+  return { average_rating: avg, review_count: ratings.length };
+}
+
+/** Derive public aggregate from already-fetched public review rows (no extra DB round-trip). */
+export function summarizePublicReviews(
+  reviews: Array<{ stars: number }>
+): PublicReviewSummary {
+  if (!reviews.length) {
+    return { average_rating: null, review_count: 0 };
+  }
+  const ratings = reviews
+    .map((r) => r.stars)
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+  if (!ratings.length) {
+    return { average_rating: null, review_count: 0 };
+  }
+  const sum = ratings.reduce((a, b) => a + b, 0);
+  return {
+    average_rating: Math.round((sum / ratings.length) * 10) / 10,
+    review_count: ratings.length,
+  };
+}
 
 export async function fetchApprovedPublicReviews(
   db: SupabaseClient,
