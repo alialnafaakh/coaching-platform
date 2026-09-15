@@ -45,14 +45,22 @@ async function dailyFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export type DailyRoomInfo = {
   name: string;
   url: string;
+  /** Unix seconds; present when Daily returns room config.exp */
+  exp?: number | null;
 };
 
 export async function getDailyRoom(name: string): Promise<DailyRoomInfo | null> {
   try {
-    const room = await dailyFetch<{ name: string; url: string }>(
-      `/rooms/${encodeURIComponent(name)}`
-    );
-    return { name: room.name, url: room.url };
+    const room = await dailyFetch<{
+      name: string;
+      url: string;
+      config?: { exp?: number | null };
+    }>(`/rooms/${encodeURIComponent(name)}`);
+    return {
+      name: room.name,
+      url: room.url,
+      exp: room.config?.exp ?? null,
+    };
   } catch (err) {
     if (err instanceof DailyApiError && err.status === 404) return null;
     throw err;
@@ -60,7 +68,11 @@ export async function getDailyRoom(name: string): Promise<DailyRoomInfo | null> 
 }
 
 async function createDailyRoomWithName(name: string): Promise<DailyRoomInfo> {
-  const room = await dailyFetch<{ name: string; url: string }>("/rooms", {
+  const room = await dailyFetch<{
+    name: string;
+    url: string;
+    config?: { exp?: number | null };
+  }>("/rooms", {
     method: "POST",
     body: JSON.stringify({
       name,
@@ -76,7 +88,11 @@ async function createDailyRoomWithName(name: string): Promise<DailyRoomInfo> {
     }),
   });
 
-  return { name: room.name, url: room.url };
+  return {
+    name: room.name,
+    url: room.url,
+    exp: room.config?.exp ?? null,
+  };
 }
 
 /**

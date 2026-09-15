@@ -150,6 +150,89 @@ function CallStage() {
   );
 }
 
+function redactDailyText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[redacted-jwt]")
+    .replace(/token=[^&\s]+/gi, "token=[redacted]")
+    .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+    .slice(0, 300);
+}
+
+type SafeDailyErrorFields = {
+  name: string | null;
+  message: string | null;
+  errorMsg: string | null;
+  type: string | null;
+  code: string | null;
+  fatal: boolean | null;
+  action: string | null;
+};
+
+/**
+ * TEMP diagnostic helper: extract only safe Daily error metadata for DevTools.
+ * Never includes tokens, URLs with query params, or API keys.
+ */
+function safeDailyErrorFields(err: unknown): SafeDailyErrorFields {
+  const obj =
+    err && typeof err === "object" ? (err as Record<string, unknown>) : null;
+  const nested =
+    obj?.error && typeof obj.error === "object"
+      ? (obj.error as Record<string, unknown>)
+      : null;
+
+  const name =
+    (typeof obj?.name === "string" && obj.name) ||
+    (err instanceof Error ? err.name : null) ||
+    null;
+
+  const message = redactDailyText(
+    obj?.message ?? (err instanceof Error ? err.message : err)
+  );
+
+  const errorMsg = redactDailyText(
+    obj?.errorMsg ?? nested?.errorMsg ?? nested?.message ?? null
+  );
+
+  const type =
+    (typeof nested?.type === "string" && nested.type) ||
+    (typeof obj?.type === "string" && obj.type) ||
+    null;
+
+  const codeRaw = nested?.code ?? obj?.code ?? nested?.error ?? obj?.error;
+  const code =
+    typeof codeRaw === "string" || typeof codeRaw === "number"
+      ? String(codeRaw).slice(0, 120)
+      : null;
+
+  const action = typeof obj?.action === "string" ? obj.action : null;
+
+  let fatal: boolean | null = null;
+  if (typeof obj?.fatal === "boolean") fatal = obj.fatal;
+  else if (action === "error") fatal = true;
+  else if (action === "nonfatal-error") fatal = false;
+  else if (type && ["ejected", "nbf-room", "nbf-token", "exp-room", "exp-token", "no-room", "meeting-full", "end-of-life", "not-allowed", "connection-error"].includes(type)) {
+    fatal = true;
+  }
+
+  return {
+    name,
+    message: message || null,
+    errorMsg: errorMsg || null,
+    type,
+    code,
+    fatal,
+    action,
+  };
+}
+
+function roomHostOnly(roomUrl: string): string {
+  try {
+    return new URL(roomUrl).host;
+  } catch {
+    return "invalid_url";
+  }
+}
+
 function ActiveCall({
   role,
   onLeave,
@@ -164,11 +247,27 @@ function ActiveCall({
   const [status, setStatus] = useState("connecting");
   const [error, setError] = useState("");
 
-  useDailyEvent("joined-meeting", () => setStatus("joined"));
-  useDailyEvent("left-meeting", () => setStatus("left"));
+  useDailyEvent("joined-meeting", () => {
+    console.info("[DailyDiag] event joined-meeting", { role });
+    setStatus("joined");
+  });
+  useDailyEvent("left-meeting", () => {
+    console.info("[DailyDiag] event left-meeting", { role });
+    setStatus("left");
+  });
   useDailyEvent("error", (ev) => {
+    console.error("[DailyDiag] event error", {
+      ...safeDailyErrorFields(ev),
+      role,
+    });
     setStatus("error");
     setError(ev?.errorMsg || t("call_error"));
+  });
+  useDailyEvent("nonfatal-error", (ev) => {
+    console.warn("[DailyDiag] event nonfatal-error", {
+      ...safeDailyErrorFields(ev),
+      role,
+    });
   });
   useDailyEvent("network-connection", (ev) => {
     if (ev?.event === "interrupted") setStatus("reconnecting");
@@ -208,7 +307,33 @@ export default function ConsultationRoom(props: RoomProps) {
     setStarting(true);
     setBootError("");
     let call: DailyCall | null = null;
+    const onCallError = (ev: unknown) => {
+      console.error("[DailyDiag] call.on(error) before/during join", {
+        ...safeDailyErrorFields(ev),
+        meetingState: call?.meetingState?.() ?? null,
+        role,
+        roomHost: roomHostOnly(roomUrl),
+      });
+    };
+    const onCallNonFatal = (ev: unknown) => {
+      console.warn("[DailyDiag] call.on(nonfatal-error) before/during join", {
+        ...safeDailyErrorFields(ev),
+        meetingState: call?.meetingState?.() ?? null,
+        role,
+        roomHost: roomHostOnly(roomUrl),
+      });
+    };
+
     try {
+      // TEMP diagnostic: detect orphaned Daily instances from prior mounts.
+      const existing = DailyIframe.getCallInstance?.() ?? null;
+      if (existing) {
+        console.warn("[DailyDiag] existing call instance before create", {
+          meetingState: existing.meetingState?.(),
+          role,
+        });
+      }
+
       if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -223,12 +348,37 @@ export default function ConsultationRoom(props: RoomProps) {
         videoSource: true,
         audioSource: true,
       });
+      // Attach listeners before join so DevTools sees the rejection even if
+      // DailyProvider/useDailyEvent is not mounted yet for this frame.
+      call.on("error", onCallError);
+      call.on("nonfatal-error", onCallNonFatal);
+
       setCallObject(call);
       await call.join({ url: roomUrl, token, userName });
+      console.info("[DailyDiag] join resolved", {
+        meetingState: call.meetingState?.(),
+        role,
+        roomHost: roomHostOnly(roomUrl),
+      });
     } catch (err) {
-      console.error("Daily join failed");
+      console.error("[DailyDiag] Daily join failed", {
+        ...safeDailyErrorFields(err),
+        meetingState: call?.meetingState?.() ?? null,
+        role,
+        roomHost: roomHostOnly(roomUrl),
+        hadExistingInstance: Boolean(DailyIframe.getCallInstance?.()),
+        // Help distinguish Error vs plain event-shaped throws.
+        thrownValueType: err === null ? "null" : typeof err,
+        thrownIsError: err instanceof Error,
+        thrownOwnKeys:
+          err && typeof err === "object"
+            ? Object.keys(err as object).slice(0, 20)
+            : [],
+      });
       setBootError(t("call_error"));
       try {
+        call?.off("error", onCallError);
+        call?.off("nonfatal-error", onCallNonFatal);
         await call?.destroy();
       } catch {
         // ignore
@@ -237,11 +387,19 @@ export default function ConsultationRoom(props: RoomProps) {
     } finally {
       setStarting(false);
     }
-  }, [roomUrl, token, userName, t]);
+  }, [roomUrl, token, userName, t, role]);
 
   useEffect(() => {
     start();
     return () => {
+      // BUG (diagnostic note): this closes over callObject from effect setup time,
+      // which is null on first mount — so cleanup often does not destroy the live call.
+      console.warn("[DailyDiag] effect cleanup", {
+        hadCallObjectInClosure: Boolean(callObject),
+        meetingState: callObject?.meetingState?.(),
+        globalInstanceState: DailyIframe.getCallInstance?.()?.meetingState?.(),
+        role,
+      });
       try {
         callObject?.leave();
         callObject?.destroy();

@@ -91,6 +91,25 @@ export async function POST(
   try {
     let room = await ensureDailyRoom(row.room_id, row.id);
 
+    // TEMP diagnostic (safe): room metadata only — never tokens.
+    const nowSec = Math.floor(Date.now() / 1000);
+    console.info("Consultation join room metadata", {
+      appointmentId: row.id,
+      roomName: room.name,
+      roomHost: (() => {
+        try {
+          return new URL(room.url).host;
+        } catch {
+          return "invalid_url";
+        }
+      })(),
+      roomExp: room.exp ?? null,
+      roomExpired: typeof room.exp === "number" ? room.exp <= nowSec : null,
+      hasStoredRoomId: Boolean(row.room_id),
+      appointmentStatus: row.status,
+      role: isAdmin ? "coach" : "customer",
+    });
+
     // Claim room_id only when still null to avoid clobbering a concurrent winner.
     if (!row.room_id) {
       const { data: claimed } = await db
@@ -143,8 +162,8 @@ export async function POST(
 
     const userName = isAdmin ? "Maryem" : row.client_name || "Guest";
     const closesAt = Math.floor(new Date(window.joinClosesAtIso).getTime() / 1000);
-    const nowSec = Math.floor(Date.now() / 1000);
-    const expiresInSeconds = Math.max(60, Math.min(60 * 60 * 3, closesAt - nowSec + 60));
+    const tokenNowSec = Math.floor(Date.now() / 1000);
+    const expiresInSeconds = Math.max(60, Math.min(60 * 60 * 3, closesAt - tokenNowSec + 60));
 
     const meetingToken = await createDailyMeetingToken({
       roomName: room.name,
