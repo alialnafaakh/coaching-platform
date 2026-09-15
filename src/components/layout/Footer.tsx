@@ -28,10 +28,10 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
   const socialLinks = isRtl
     ? [
         {
-          href: "https://www.instagram.com/all_love_to_me",
+          href: "https://www.instagram.com/evolverecbt/",
           icon: <InstagramIcon />,
           label: "إنستغرام",
-          handle: "all_love_to_me",
+          handle: "evolverecbt",
           hoverColor: "hover:text-pink-400",
         },
         {
