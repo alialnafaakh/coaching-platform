@@ -18,7 +18,7 @@ function formatAverage(n: number): string {
 }
 
 export default function AboutSection({ content }: { content?: any }) {
-  const { isRtl, t } = useLanguage();
+  const { isRtl, t, lang } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
   const [averageRating, setAverageRating] = useState<number | null>(null);
@@ -34,7 +34,9 @@ export default function AboutSection({ content }: { content?: any }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reviews/public")
+    fetch(`/api/reviews/public?lang=${lang === "ar" ? "ar" : "en"}`, {
+      cache: "no-store",
+    })
       .then(async (r) => {
         const d = await r.json().catch(() => ({}));
         if (cancelled) return;
@@ -61,7 +63,7 @@ export default function AboutSection({ content }: { content?: any }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lang]);
 
   const ratingBadge =
     averageRating != null && reviewCount > 0 ? (

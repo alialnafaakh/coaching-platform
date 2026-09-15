@@ -66,6 +66,7 @@ export type UiStrings = {
   tags: string[];
   services_data: UiService[];
   what_clients_say: string;
+  read_more_reviews: string;
   testimonials_data: UiTestimonial[];
   pricing_headline: string;
   one_on_one: string;
@@ -88,6 +89,7 @@ export type UiStrings = {
   available_times: string;
   istanbul_time: string;
   change_time: string;
+  booking_back: string;
   no_slots_for: string;
   choose_another_date: string;
   booked_headline: string;
@@ -249,6 +251,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
       },
     ],
     what_clients_say: "What clients say",
+    read_more_reviews: "Read more reviews",
     testimonials_data: [
       {
         name: "Sofia R.",
@@ -287,6 +290,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     available_times: "Available times on",
     istanbul_time: "All times are in Istanbul Time (TRT).",
     change_time: "Change time",
+    booking_back: "Back",
     no_slots_for: "No available slots for",
     choose_another_date: "Please choose another date.",
     booked_headline: "You're booked!",
@@ -432,6 +436,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
       },
     ],
     what_clients_say: "ماذا يقول العملاء",
+    read_more_reviews: "قراءة المزيد من المراجعات",
     testimonials_data: [
       {
         name: "صوفيا ر.",
@@ -470,6 +475,7 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     available_times: "الأوقات المتاحة في",
     istanbul_time: "جميع الأوقات بتوقيت اسطنبول (TRT).",
     change_time: "تغيير الوقت",
+    booking_back: "رجوع",
     no_slots_for: "لا توجد مواعيد متاحة ليوم",
     choose_another_date: "يرجى اختيار تاريخ آخر.",
     booked_headline: "تم الحجز بنجاح!",

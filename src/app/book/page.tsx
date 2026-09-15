@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import BookingDatePicker from "@/components/booking/DatePicker";
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
-import BookingForm from "@/components/booking/BookingForm";
+import BookingForm, { type BookingFormDraft } from "@/components/booking/BookingForm";
 import ConsultationPriceSummary from "@/components/booking/ConsultationPriceSummary";
 import { TimeSlot, ConsultationSettingsPublic } from "@/types";
 import { useLanguage } from "@/context/LanguageContext";
@@ -14,11 +14,42 @@ import { DEFAULT_CONSULTATION_SETTINGS, calculateFinalPrice } from "@/lib/consul
 
 type Step = "date" | "time" | "form";
 
+function BookingBackButton({
+  onClick,
+  label,
+  isRtl,
+}: {
+  onClick: () => void;
+  label: string;
+  isRtl: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium text-[#0d7377] border border-[#0d7377]/25 bg-white hover:bg-[#0d7377]/5 transition-colors ${
+        isRtl ? "flex-row-reverse font-arabic" : ""
+      }`}
+    >
+      <span aria-hidden className="text-base leading-none">
+        {isRtl ? "→" : "←"}
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export default function BookPage() {
   const { isRtl, t, lang } = useLanguage();
   const [step, setStep] = useState<Step>("date");
   const [date, setDate] = useState<Date | undefined>();
   const [slot, setSlot] = useState<TimeSlot | null>(null);
+  const [draft, setDraft] = useState<BookingFormDraft>({
+    name: "",
+    email: "",
+    notes: "",
+  });
   const [pricing, setPricing] = useState<ConsultationSettingsPublic>({
     ...DEFAULT_CONSULTATION_SETTINGS,
     final_price_usd: calculateFinalPrice(
@@ -43,6 +74,7 @@ export default function BookPage() {
       .catch(() => undefined);
   }, []);
 
+  /** Selecting a date advances to Time and clears an incompatible prior slot. */
   const handleDateSelect = (d: Date | undefined) => {
     setDate(d);
     setSlot(null);
@@ -54,8 +86,19 @@ export default function BookPage() {
     setStep("form");
   };
 
+  const goBackToDate = () => {
+    // Client-side only — preserve selected date; keep form draft.
+    setStep("date");
+  };
+
+  const goBackToTime = () => {
+    // Client-side only — preserve date + slot + draft; no API calls.
+    setStep("time");
+  };
+
   const steps = [t("choose_date"), t("choose_time"), t("your_details")];
   const stepIndex = ["date", "time", "form"].indexOf(step);
+  const backLabel = t("booking_back");
 
   const formatDate = (d: Date, formatStr: string) => {
     return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", {
@@ -68,7 +111,11 @@ export default function BookPage() {
   return (
     <>
       <Navbar />
-      <main className={`min-h-screen bg-[#faf9f6] pt-24 pb-20 px-4 sm:px-6 ${isRtl ? "text-right" : "text-left"}`}>
+      <main
+        className={`min-h-screen bg-[#faf9f6] pt-24 pb-20 px-4 sm:px-6 ${
+          isRtl ? "text-right" : "text-left"
+        }`}
+      >
         <div className="max-w-xl mx-auto min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -76,8 +123,12 @@ export default function BookPage() {
             className="text-center mb-8 sm:mb-10"
           >
             <h1
-              className={`text-3xl sm:text-4xl text-[#1a1a2e] mb-2 ${isRtl ? "font-arabic-display" : ""}`}
-              style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
+              className={`text-3xl sm:text-4xl text-[#1a1a2e] mb-2 ${
+                isRtl ? "font-arabic-display" : ""
+              }`}
+              style={{
+                fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif",
+              }}
             >
               {t("book_session")}
             </h1>
@@ -90,7 +141,6 @@ export default function BookPage() {
             />
           </motion.div>
 
-          {/* Step indicator: labels always visible on mobile (not numbers-only) */}
           <div
             className={`flex flex-col gap-2 mb-8 sm:mb-10 ${isRtl ? "items-stretch" : ""}`}
             aria-label={isRtl ? "خطوات الحجز" : "Booking steps"}
@@ -139,7 +189,11 @@ export default function BookPage() {
           >
             {step === "date" && (
               <div>
-                <p className={`text-sm font-medium text-[#1a1a2e] mb-6 text-center ${isRtl ? "font-arabic" : ""}`}>
+                <p
+                  className={`text-sm font-medium text-[#1a1a2e] mb-6 text-center ${
+                    isRtl ? "font-arabic" : ""
+                  }`}
+                >
                   {t("select_date_info")}
                 </p>
                 <BookingDatePicker selected={date} onSelect={handleDateSelect} />
@@ -148,32 +202,52 @@ export default function BookPage() {
 
             {step === "time" && date && (
               <div>
-                <button
-                  onClick={() => setStep("date")}
-                  className={`text-xs text-[#0d7377] mb-4 flex items-center gap-1 hover:underline ${isRtl ? "flex-row-reverse font-arabic" : ""}`}
-                >
-                  {isRtl ? "→" : "←"} {formatDate(date, "MMMM d")}
-                </button>
-                <p className={`text-sm font-medium text-[#1a1a2e] mb-6 ${isRtl ? "font-arabic" : ""}`}>
+                <div className="mb-5">
+                  <BookingBackButton
+                    onClick={goBackToDate}
+                    label={backLabel}
+                    isRtl={isRtl}
+                  />
+                </div>
+                <p className={`text-sm font-medium text-[#1a1a2e] mb-2 ${isRtl ? "font-arabic" : ""}`}>
                   {t("available_times")}{" "}
                   <span className="text-[#0d7377]">{formatDate(date, "EEEE, MMMM d")}</span>
-                  <span className={`block text-xs font-normal text-[#6b7280] mt-1 ${isRtl ? "font-arabic" : ""}`}>
+                  <span
+                    className={`block text-xs font-normal text-[#6b7280] mt-1 ${
+                      isRtl ? "font-arabic" : ""
+                    }`}
+                  >
                     {t("istanbul_time")}
                   </span>
                 </p>
-                <TimeSlotPicker date={date} selectedSlot={slot} onSelect={handleSlotSelect} />
+                <TimeSlotPicker
+                  date={date}
+                  selectedSlot={
+                    slot && date
+                      ? // Guard: if slot somehow mismatches day, treat as none
+                        slot
+                      : null
+                  }
+                  onSelect={handleSlotSelect}
+                />
               </div>
             )}
 
             {step === "form" && date && slot && (
               <div>
-                <button
-                  onClick={() => setStep("time")}
-                  className={`text-xs text-[#0d7377] mb-4 flex items-center gap-1 hover:underline ${isRtl ? "flex-row-reverse font-arabic" : ""}`}
-                >
-                  {isRtl ? "→" : "←"} {t("change_time")}
-                </button>
-                <BookingForm slot={slot} date={date} />
+                <div className="mb-5">
+                  <BookingBackButton
+                    onClick={goBackToTime}
+                    label={backLabel}
+                    isRtl={isRtl}
+                  />
+                </div>
+                <BookingForm
+                  slot={slot}
+                  date={date}
+                  draft={draft}
+                  onDraftChange={setDraft}
+                />
               </div>
             )}
           </motion.div>

@@ -11,22 +11,26 @@ import PricingCard from "@/components/landing/PricingCard";
 import CTASection from "@/components/landing/CTASection";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { mergeSiteContent } from "@/lib/siteContent";
 
-// Fallback content to ensure the site always loads
+/** Fallback when DB has no row — never overrides present saved fields. */
 export const DEFAULT_CONTENT: any = {
   en: {
     general: { siteName: "Maryem", availability: "Accepting New Clients" },
     hero: {
       headline: "The relationship you want starts with one honest session.",
       highlight: "honest",
-      subheadline: "Biological, psychological, and social coaching for individuals and couples ready to heal patterns and deepen bonds.",
+      subheadline:
+        "Biological, psychological, and social coaching for individuals and couples ready to heal patterns and deepen bonds.",
     },
     about: {
       imageUrl: "",
       statValue: "200+",
       statLabel: "lives transformed through compassionate coaching",
-      text1: "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair.",
-      text2: "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins.",
+      text1:
+        "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair.",
+      text2:
+        "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins.",
     },
     sections: {
       servicesTitle: "What We Work On",
@@ -40,21 +44,24 @@ export const DEFAULT_CONTENT: any = {
         "Secure, confidential booking",
         "Follow-up support email",
       ],
-    }
+    },
   },
   ar: {
     general: { siteName: "مريم", availability: "أستقبل عملاء جدد" },
     hero: {
       headline: "العلاقة التي تطمحين إليها تبدأ بجلسة واحدة صادقة.",
       highlight: "صادقة",
-      subheadline: "كوتشينج بيولوجي ونفسي واجتماعي للأفراد والأزواج المستعدين لشفاء الأنماط وتعميق الروابط.",
+      subheadline:
+        "كوتشينج بيولوجي ونفسي واجتماعي للأفراد والأزواج المستعدين لشفاء الأنماط وتعميق الروابط.",
     },
     about: {
       imageUrl: "",
       statValue: "+200",
       statLabel: "حياة تحولت من خلال الكوتشينج الرحيم",
-      text1: "عملي متجذر في النموذج البيولوجي النفسي الاجتماعي — فهم أن جهازنا العصبي، وقصة طفولتنا، وسياقنا الثقافي كلها تشكل الطريقة التي نحب بها ونتعلق ونصلح.",
-      text2: "أنا كوتش علاقات معتمدة مدربة على نظرية التعلق، والوعي الجسدي، وديناميكيات الأسرة النظامية. جلساتي هي مساحة آمنة وغير حكمية حيث يبدأ التغيير الحقيقي.",
+      text1:
+        "عملي متجذر في النموذج البيولوجي النفسي الاجتماعي — فهم أن جهازنا العصبي، وقصة طفولتنا، وسياقنا الثقافي كلها تشكل الطريقة التي نحب بها ونتعلق ونصلح.",
+      text2:
+        "أنا كوتش علاقات معتمدة مدربة على نظرية التعلق، والوعي الجسدي، وديناميكيات الأسرة النظامية. جلساتي هي مساحة آمنة وغير حكمية حيث يبدأ التغيير الحقيقي.",
     },
     sections: {
       servicesTitle: "مجالات التركيز",
@@ -68,8 +75,8 @@ export const DEFAULT_CONTENT: any = {
         "حجز آمن وسري",
         "بريد إلكتروني للمتابعة والدعم",
       ],
-    }
-  }
+    },
+  },
 };
 
 export default function HomePage() {
@@ -77,12 +84,19 @@ export default function HomePage() {
   const [content, setContent] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/content")
+    let cancelled = false;
+    fetch("/api/content", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        setContent(d.content || DEFAULT_CONTENT);
+        if (cancelled) return;
+        setContent(mergeSiteContent(DEFAULT_CONTENT, d.content));
       })
-      .catch(() => setContent(DEFAULT_CONTENT));
+      .catch(() => {
+        if (!cancelled) setContent(DEFAULT_CONTENT);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!content) return <div className="min-h-screen bg-[#faf9f6]" />;
@@ -93,15 +107,25 @@ export default function HomePage() {
     <>
       <Navbar siteName={c.general?.siteName || DEFAULT_CONTENT[lang].general.siteName} />
       <main>
-        <HeroSection 
-          content={c.hero || DEFAULT_CONTENT[lang].hero} 
-          availability={c.general?.availability || DEFAULT_CONTENT[lang].general.availability}
+        <HeroSection
+          content={c.hero || DEFAULT_CONTENT[lang].hero}
+          availability={
+            c.general?.availability || DEFAULT_CONTENT[lang].general.availability
+          }
         />
         <AboutSection content={c.about || DEFAULT_CONTENT[lang].about} />
-        <ServicesSection title={c.sections?.servicesTitle || DEFAULT_CONTENT[lang].sections.servicesTitle} />
-        <TestimonialsSection title={c.sections?.testimonialsTitle || DEFAULT_CONTENT[lang].sections.testimonialsTitle} />
-        <PricingCard 
-          title={c.sections?.pricingTitle || DEFAULT_CONTENT[lang].sections.pricingTitle} 
+        <ServicesSection
+          title={c.sections?.servicesTitle || DEFAULT_CONTENT[lang].sections.servicesTitle}
+        />
+        <TestimonialsSection
+          title={
+            c.sections?.testimonialsTitle ||
+            DEFAULT_CONTENT[lang].sections.testimonialsTitle
+          }
+          curated={Array.isArray(c.testimonials) ? c.testimonials : undefined}
+        />
+        <PricingCard
+          title={c.sections?.pricingTitle || DEFAULT_CONTENT[lang].sections.pricingTitle}
           features={c.sections?.pricingFeatures}
         />
         <CTASection />

@@ -8,16 +8,21 @@ import { useLanguage } from "@/context/LanguageContext";
 import ConsultationPriceSummary from "@/components/booking/ConsultationPriceSummary";
 import { DEFAULT_CONSULTATION_SETTINGS, calculateFinalPrice } from "@/lib/consultationSettings";
 
+export type BookingFormDraft = {
+  name: string;
+  email: string;
+  notes: string;
+};
+
 interface Props {
   slot: TimeSlot;
   date: Date;
+  draft: BookingFormDraft;
+  onDraftChange: (draft: BookingFormDraft) => void;
 }
 
-export default function BookingForm({ slot, date }: Props) {
+export default function BookingForm({ slot, date, draft, onDraftChange }: Props) {
   const { isRtl, t, lang } = useLanguage();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pricing, setPricing] = useState<ConsultationSettingsPublic>({
@@ -61,9 +66,9 @@ export default function BookingForm({ slot, date }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slot_id: slot.id,
-          client_name: name,
-          client_email: email,
-          notes,
+          client_name: draft.name,
+          client_email: draft.email,
+          notes: draft.notes,
           date: format(date, "yyyy-MM-dd"),
           start_time: slot.start_time,
           end_time: slot.end_time,
@@ -87,7 +92,7 @@ export default function BookingForm({ slot, date }: Props) {
   };
 
   const inputCls = `w-full px-4 py-3 rounded-xl border border-[#e5e0d8] bg-[#faf9f6] text-[#1a1a2e] text-sm placeholder:text-[#9ca3af] focus:outline-none focus:border-[#0d7377] focus:ring-2 focus:ring-[#0d7377]/10 transition-all ${isRtl ? "text-right font-arabic" : ""}`;
-  const isFormValid = name.trim().length > 1 && email.trim().length > 0;
+  const isFormValid = draft.name.trim().length > 1 && draft.email.trim().length > 0;
 
   return (
     <motion.form
@@ -121,8 +126,8 @@ export default function BookingForm({ slot, date }: Props) {
         <input
           type="text"
           required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={draft.name}
+          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
           placeholder={t("booking_name_placeholder")}
           className={inputCls}
         />
@@ -135,8 +140,8 @@ export default function BookingForm({ slot, date }: Props) {
         <input
           type="email"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={draft.email}
+          onChange={(e) => onDraftChange({ ...draft, email: e.target.value })}
           placeholder={t("booking_email_placeholder")}
           className={inputCls}
         />
@@ -148,8 +153,8 @@ export default function BookingForm({ slot, date }: Props) {
         </label>
         <textarea
           rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={draft.notes}
+          onChange={(e) => onDraftChange({ ...draft, notes: e.target.value })}
           placeholder={t("booking_notes_placeholder")}
           className={`${inputCls} resize-none`}
         />
@@ -173,12 +178,12 @@ export default function BookingForm({ slot, date }: Props) {
       <button
         type="submit"
         disabled={loading || !isFormValid}
-        className={`w-full py-4 rounded-xl text-base font-medium text-white transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isRtl ? "font-arabic" : ""}`}
+        className={`w-full min-h-[48px] py-4 rounded-xl text-base font-medium text-white transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isRtl ? "font-arabic" : ""}`}
         style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
       >
         {loading ? (
           <>
-            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden>
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>

@@ -5,6 +5,7 @@ import {
   loadAppointmentWithToken,
   parseComment,
   parseRating,
+  parseReviewLanguage,
 } from "@/lib/reviews";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  const language = parseReviewLanguage(body.language);
+  if (!language) {
+    return NextResponse.json(
+      {
+        error: "invalid_language",
+        message: "Review language must be Arabic or English (matching the review page).",
+      },
+      { status: 400 }
+    );
+  }
+
   const comment = parseComment(body.comment);
   if (body.comment != null && body.comment !== "" && comment == null) {
     return NextResponse.json(
@@ -139,13 +151,28 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       appointment_id: id,
       rating,
       comment,
+      language,
       // Always pending — customer cannot set moderation_status.
       moderation_status: "pending",
     })
-    .select("id, rating, comment, moderation_status, created_at")
+    .select("id, rating, comment, moderation_status, language, created_at")
     .single();
 
   if (insertError) {
+    // Language column missing — do not silently insert without language.
+    if (
+      insertError.message?.toLowerCase().includes("language") ||
+      insertError.code === "42703"
+    ) {
+      return NextResponse.json(
+        {
+          error: "server_error",
+          message:
+            "Review language support is not configured yet. Please try again later.",
+        },
+        { status: 503 }
+      );
+    }
     if (insertError.code === "23505") {
       return NextResponse.json(
         {

@@ -91,6 +91,8 @@ export interface ConsultationReview {
   rating: number;
   comment: string | null;
   moderation_status: ReviewModerationStatus;
+  language?: "ar" | "en" | null;
+  is_featured?: boolean;
   created_at: string;
   reviewed_at: string | null;
 }

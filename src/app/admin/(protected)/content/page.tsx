@@ -126,7 +126,7 @@ export default function ContentEditor() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
-    fetch("/api/content")
+    fetch("/api/content", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (!d.content || (!d.content.en && !d.content.ar)) {
@@ -136,6 +136,21 @@ export default function ContentEditor() {
             en: {
               ...DEFAULT_CONTENT.en,
               ...d.content.en,
+              general: {
+                ...DEFAULT_CONTENT.en.general,
+                ...(d.content.en?.general || {}),
+              },
+              hero: {
+                ...DEFAULT_CONTENT.en.hero,
+                ...(d.content.en?.hero || {}),
+              },
+              sections: {
+                ...DEFAULT_CONTENT.en.sections,
+                ...(d.content.en?.sections || {}),
+                pricingFeatures:
+                  d.content.en?.sections?.pricingFeatures ??
+                  DEFAULT_CONTENT.en.sections.pricingFeatures,
+              },
               about: {
                 ...DEFAULT_CONTENT.en.about,
                 ...(d.content.en?.about || {}),
@@ -145,6 +160,21 @@ export default function ContentEditor() {
             ar: {
               ...DEFAULT_CONTENT.ar,
               ...d.content.ar,
+              general: {
+                ...DEFAULT_CONTENT.ar.general,
+                ...(d.content.ar?.general || {}),
+              },
+              hero: {
+                ...DEFAULT_CONTENT.ar.hero,
+                ...(d.content.ar?.hero || {}),
+              },
+              sections: {
+                ...DEFAULT_CONTENT.ar.sections,
+                ...(d.content.ar?.sections || {}),
+                pricingFeatures:
+                  d.content.ar?.sections?.pricingFeatures ??
+                  DEFAULT_CONTENT.ar.sections.pricingFeatures,
+              },
               about: {
                 ...DEFAULT_CONTENT.ar.about,
                 ...(d.content.ar?.about || {}),
@@ -153,6 +183,10 @@ export default function ContentEditor() {
             },
           });
         }
+        setLoading(false);
+      })
+      .catch(() => {
+        setContent(DEFAULT_CONTENT);
         setLoading(false);
       });
   }, []);

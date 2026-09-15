@@ -76,7 +76,12 @@ function ReviewFormInner() {
       const res = await fetch(`/api/reviews/appointment/${encodeURIComponent(id)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, rating, comment: comment.trim() || null }),
+        body: JSON.stringify({
+          token,
+          rating,
+          comment: comment.trim() || null,
+          language: lang === "ar" ? "ar" : "en",
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
