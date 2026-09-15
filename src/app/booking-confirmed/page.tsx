@@ -219,7 +219,11 @@ function BookingConfirmedContent() {
                 </div>
               )}
 
-              {copy.tone === "confirmed" && appointment && id && token && (
+              {copy.tone === "confirmed" &&
+                appointment &&
+                id &&
+                token &&
+                appointment.status !== "completed" && (
                 <div className={`p-5 rounded-2xl border mb-8 bg-[#0d7377]/6 border-[#0d7377]/15 ${isRtl ? "text-right" : "text-left"}`}>
                   <p className={`text-sm font-medium mb-3 text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
                     {t("consultation_ready")}
@@ -236,6 +240,21 @@ function BookingConfirmedContent() {
                     <li>{t("add_calendar")}</li>
                     <li>{t("intake_sent")}</li>
                   </ul>
+                </div>
+              )}
+
+              {appointment?.status === "completed" && id && token && (
+                <div className={`p-5 rounded-2xl border mb-8 bg-[#0d7377]/6 border-[#0d7377]/15 ${isRtl ? "text-right" : "text-left"}`}>
+                  <p className={`text-sm font-medium mb-3 text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
+                    {t("review_thank_you")}
+                  </p>
+                  <Link
+                    href={`/review/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`}
+                    className={`inline-block w-full text-center px-6 py-3 rounded-xl text-sm font-medium text-white ${isRtl ? "font-arabic" : ""}`}
+                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+                  >
+                    {t("review_leave_review")}
+                  </Link>
                 </div>
               )}
 

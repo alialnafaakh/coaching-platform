@@ -66,10 +66,10 @@ export default function AboutSection({ content }: { content?: any }) {
             className={`absolute ${isRtl ? "-left-6" : "-right-6"} top-12 bg-white rounded-2xl p-5 shadow-xl max-w-[180px] ${isRtl ? "text-right" : "text-left"}`}
           >
             <p className={`text-3xl font-semibold text-[#0d7377] ${isRtl ? "font-arabic" : ""}`}>
-              {isRtl ? "+200" : "200+"}
+              {content?.statValue?.trim() || (isRtl ? "+200" : "200+")}
             </p>
             <p className={`text-xs text-[#6b7280] mt-0.5 ${isRtl ? "font-arabic" : ""}`}>
-              {t("lives_transformed")}
+              {content?.statLabel?.trim() || t("lives_transformed")}
             </p>
           </motion.div>
 

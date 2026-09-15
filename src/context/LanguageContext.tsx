@@ -137,6 +137,18 @@ export type UiStrings = {
   media_permission_hint: string;
   consultation_room_title: string;
   consultation_ready: string;
+  review_page_title: string;
+  review_intro: string;
+  review_rating_label: string;
+  review_comment_label: string;
+  review_comment_placeholder: string;
+  review_submit: string;
+  review_submitting: string;
+  review_received_pending: string;
+  review_already_submitted: string;
+  review_not_eligible: string;
+  review_leave_review: string;
+  review_thank_you: string;
 };
 
 export type TranslationKey = keyof UiStrings;
@@ -321,6 +333,18 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     media_permission_hint: "Camera or microphone access was denied. You can still join with devices off.",
     consultation_room_title: "Consultation room",
     consultation_ready: "Your consultation room is ready.",
+    review_page_title: "Share your experience",
+    review_intro: "Your consultation is complete. We would love to hear how it went.",
+    review_rating_label: "Your rating",
+    review_comment_label: "Your review (optional)",
+    review_comment_placeholder: "What felt helpful about your session?",
+    review_submit: "Submit review",
+    review_submitting: "Submitting…",
+    review_received_pending: "Thank you. Your review was received and is awaiting approval before it appears on the site.",
+    review_already_submitted: "You have already submitted a review for this consultation.",
+    review_not_eligible: "Reviews are only available after a completed consultation.",
+    review_leave_review: "Leave a review",
+    review_thank_you: "Thank you for sharing.",
   },
   ar: {
     book_session: "احجز جلسة",
@@ -489,6 +513,18 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     media_permission_hint: "تم رفض إذن الكاميرا أو الميكروفون. يمكنك الانضمام مع إيقاف الأجهزة.",
     consultation_room_title: "غرفة الاستشارة",
     consultation_ready: "غرفة الاستشارة جاهزة.",
+    review_page_title: "شارك تجربتك",
+    review_intro: "اكتملت استشارتك. يسعدنا معرفة انطباعك.",
+    review_rating_label: "تقييمك",
+    review_comment_label: "مراجعتك (اختياري)",
+    review_comment_placeholder: "ما الذي كان مفيدًا في جلستك؟",
+    review_submit: "إرسال التقييم",
+    review_submitting: "جاري الإرسال…",
+    review_received_pending: "شكرًا لك. استلمنا تقييمك وهو بانتظار الموافقة قبل ظهوره على الموقع.",
+    review_already_submitted: "لقد أرسلتَ بالفعل تقييمًا لهذه الاستشارة.",
+    review_not_eligible: "التقييمات متاحة فقط بعد استشارة مكتملة.",
+    review_leave_review: "اترك تقييمًا",
+    review_thank_you: "شكرًا لمشاركتك.",
   }
 };
 

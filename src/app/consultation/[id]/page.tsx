@@ -195,6 +195,19 @@ function CustomerConsultationInner() {
                     {joining ? t("connecting") : t("enter_consultation")}
                   </button>
                 </>
+              ) : appt.status === "completed" && id && token ? (
+                <div className="rounded-xl bg-[#0d7377]/6 border border-[#0d7377]/15 p-4">
+                  <p className={`text-sm font-medium text-[#0d7377] mb-3 ${isRtl ? "font-arabic" : ""}`}>
+                    {t("review_thank_you")}
+                  </p>
+                  <Link
+                    href={`/review/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`}
+                    className={`inline-block w-full text-center px-6 py-3 rounded-xl text-sm font-medium text-white ${isRtl ? "font-arabic" : ""}`}
+                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
+                  >
+                    {t("review_leave_review")}
+                  </Link>
+                </div>
               ) : (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
                   <p className={`text-sm font-medium text-amber-800 ${isRtl ? "font-arabic" : ""}`}>

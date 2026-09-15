@@ -82,3 +82,21 @@ export interface CreateSlotPayload {
   end_time: string;
   slots?: CreateSlotPayload[];
 }
+
+export type ReviewModerationStatus = "pending" | "approved" | "rejected";
+
+export interface ConsultationReview {
+  id: string;
+  appointment_id: string;
+  rating: number;
+  comment: string | null;
+  moderation_status: ReviewModerationStatus;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface AdminConsultationReviewRow extends ConsultationReview {
+  client_name: string;
+  consultation_date: string;
+  consultation_start_time: string;
+}

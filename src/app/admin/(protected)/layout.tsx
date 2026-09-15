@@ -25,6 +25,7 @@ export default async function AdminProtectedLayout({
     { href: "/admin/appointments", label: "📋 Appointments" },
     { href: "/admin/settings", label: "⚙️ Consultation Settings" },
     { href: "/admin/content", label: "📝 Edit Content" },
+    { href: "/admin/reviews", label: "⭐ Reviews" },
   ];
 
   return (

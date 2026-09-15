@@ -10,6 +10,7 @@ interface Testimonial {
   date?: string;
   quote: string;
   stars?: number;
+  verified?: boolean;
 }
 
 export default function TestimonialsSection({ title = "Stories of Change" }: { title?: string }) {
@@ -19,22 +20,38 @@ export default function TestimonialsSection({ title = "Stories of Change" }: { t
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
-  // Load testimonials from saved content (API), fallback to language context defaults
+  // Curated testimonials from site_content + approved verified reviews (public API).
   useEffect(() => {
-    fetch("/api/content")
-      .then((r) => r.json())
-      .then((d) => {
-        const saved = d?.content?.[lang]?.testimonials;
-        if (saved && saved.length > 0) {
-          setTestimonials(saved);
-        } else {
-          // Fallback to language context defaults
-          setTestimonials(t("testimonials_data"));
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const [contentRes, reviewsRes] = await Promise.all([
+          fetch("/api/content"),
+          fetch(`/api/reviews/public?lang=${lang}`),
+        ]);
+        const contentData = await contentRes.json();
+        const reviewsData = await reviewsRes.json().catch(() => ({ reviews: [] }));
+
+        const saved = contentData?.content?.[lang]?.testimonials;
+        const curated: Testimonial[] =
+          saved && saved.length > 0 ? saved : t("testimonials_data");
+        const verified: Testimonial[] = Array.isArray(reviewsData.reviews)
+          ? reviewsData.reviews
+          : [];
+
+        if (!cancelled) {
+          setTestimonials([...verified, ...curated]);
         }
-      })
-      .catch(() => {
-        setTestimonials(t("testimonials_data"));
-      });
+      } catch {
+        if (!cancelled) setTestimonials(t("testimonials_data"));
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [lang, t]);
 
   return (

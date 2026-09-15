@@ -23,6 +23,8 @@ export const DEFAULT_CONTENT: any = {
     },
     about: {
       imageUrl: "",
+      statValue: "200+",
+      statLabel: "lives transformed through compassionate coaching",
       text1: "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair.",
       text2: "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins.",
     },
@@ -49,6 +51,8 @@ export const DEFAULT_CONTENT: any = {
     },
     about: {
       imageUrl: "",
+      statValue: "+200",
+      statLabel: "حياة تحولت من خلال الكوتشينج الرحيم",
       text1: "عملي متجذر في النموذج البيولوجي النفسي الاجتماعي — فهم أن جهازنا العصبي، وقصة طفولتنا، وسياقنا الثقافي كلها تشكل الطريقة التي نحب بها ونتعلق ونصلح.",
       text2: "أنا كوتش علاقات معتمدة مدربة على نظرية التعلق، والوعي الجسدي، وديناميكيات الأسرة النظامية. جلساتي هي مساحة آمنة وغير حكمية حيث يبدأ التغيير الحقيقي.",
     },

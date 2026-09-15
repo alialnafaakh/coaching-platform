@@ -13,6 +13,8 @@ const DEFAULT_CONTENT: any = {
     },
     about: {
       imageUrl: "",
+      statValue: "200+",
+      statLabel: "lives transformed through compassionate coaching",
       text1: "My work is grounded in the biopsychosocial model — the understanding that our nervous system, our childhood story, and our cultural context all shape the way we love, attach, and repair.",
       text2: "I am a certified relationship coach trained in attachment theory, somatic awareness, and systemic family dynamics. My sessions are a safe, non-judgmental space where real change begins.",
     },
@@ -66,6 +68,8 @@ const DEFAULT_CONTENT: any = {
     },
     about: {
       imageUrl: "",
+      statValue: "+200",
+      statLabel: "حياة تحولت من خلال الكوتشينج الرحيم",
       text1: "عملي متجذر في النموذج البيولوجي النفسي الاجتماعي — فهم أن جهازنا العصبي، وقصة طفولتنا، وسياقنا الثقافي كلها تشكل الطريقة التي نحب بها ونتعلق ونصلح.",
       text2: "أنا كوتش علاقات معتمدة مدربة على نظرية التعلق، والوعي الجسدي، وديناميكيات الأسرة النظامية. جلساتي هي مساحة آمنة وغير حكمية حيث يبدأ التغيير الحقيقي.",
     },
@@ -132,11 +136,19 @@ export default function ContentEditor() {
             en: {
               ...DEFAULT_CONTENT.en,
               ...d.content.en,
+              about: {
+                ...DEFAULT_CONTENT.en.about,
+                ...(d.content.en?.about || {}),
+              },
               testimonials: d.content.en?.testimonials ?? DEFAULT_CONTENT.en.testimonials,
             },
             ar: {
               ...DEFAULT_CONTENT.ar,
               ...d.content.ar,
+              about: {
+                ...DEFAULT_CONTENT.ar.about,
+                ...(d.content.ar?.about || {}),
+              },
               testimonials: d.content.ar?.testimonials ?? DEFAULT_CONTENT.ar.testimonials,
             },
           });
@@ -569,6 +581,32 @@ export default function ContentEditor() {
                     <p className="text-xs text-[#0d7377] mt-2">{ar ? "جاري الرفع..." : "Uploading..."}</p>
                   )}
                 </div>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[#6b7280] mb-1.5">
+                  {ar ? "بطاقة الإحصاء — الرقم الرئيسي" : "Stat card — main value"}
+                </label>
+                <input
+                  type="text"
+                  value={c.about?.statValue || ""}
+                  onChange={(e) => handleChange("about", "statValue", e.target.value)}
+                  placeholder={ar ? "+200" : "200+"}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6b7280] mb-1.5">
+                  {ar ? "بطاقة الإحصاء — النص الداعم" : "Stat card — supporting text"}
+                </label>
+                <input
+                  type="text"
+                  value={c.about?.statLabel || ""}
+                  onChange={(e) => handleChange("about", "statLabel", e.target.value)}
+                  placeholder={ar ? "حياة تحولت..." : "lives transformed..."}
+                  className={inputCls}
+                />
               </div>
             </div>
             <div>
