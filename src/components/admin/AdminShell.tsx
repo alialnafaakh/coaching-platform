@@ -169,14 +169,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      {/* Main content: full width on mobile, offset on desktop */}
-      <main
-        className="lg:ml-56 min-w-0 w-full max-w-[100vw] overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6 lg:p-8"
-        style={{
-          paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
-        }}
-      >
-        {children}
+      {/* Main content: full viewport width; desktop offset via padding (not margin+w-full) */}
+      <main className="min-w-0 w-full max-w-full overflow-x-hidden lg:pl-56">
+        <div
+          className="min-w-0 w-full max-w-full px-4 py-5 sm:px-6 sm:py-6 lg:p-8"
+          style={{
+            paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+          }}
+        >
+          {children}
+        </div>
       </main>
     </div>
   );
