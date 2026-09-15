@@ -30,7 +30,16 @@ function normalizeSlots(body: SlotInput & { slots?: SlotInput[] }): SlotInput[] 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
-  const admin = searchParams.get("admin");
+  const wantsAdmin = Boolean(searchParams.get("admin"));
+
+  // Admin/unfiltered slot listing requires a valid admin session.
+  if (wantsAdmin) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   const db = getSupabaseAdmin();
   try {
     await expireExpiredHolds(db);
@@ -42,7 +51,7 @@ export async function GET(req: NextRequest) {
       .order("start_time", { ascending: true });
 
     if (date) query = query.eq("date", date);
-    if (!admin) query = query.eq("is_booked", false);
+    if (!wantsAdmin) query = query.eq("is_booked", false);
 
     const { data, error } = await query;
     if (error) {
@@ -51,7 +60,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Public list: hide slots whose Istanbul start time has already passed (same-day OK if still future).
-    const rows = admin
+    const rows = wantsAdmin
       ? data || []
       : (data || []).filter((slot: { date: string; start_time: string }) =>
           isIstanbulSlotStartInFuture(slot.date, slot.start_time)

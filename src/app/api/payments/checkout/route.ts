@@ -10,7 +10,22 @@ import { BookingFormData } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * WayL checkout is intentionally inactive.
+ * Flip to true only when payments are ready to launch.
+ * Do not gate on env key presence alone.
+ */
+const WAYL_CHECKOUT_ENABLED = false;
+
 export async function POST(req: NextRequest) {
+  if (!WAYL_CHECKOUT_ENABLED) {
+    return NextResponse.json(
+      { error: "Payments are not currently available." },
+      { status: 503 }
+    );
+  }
+
+  // --- Recoverable WayL implementation (unreachable while inactive) ---
   const body: BookingFormData = await req.json();
   const { slot_id, client_name, client_email, notes, date, start_time, end_time } = body;
 
