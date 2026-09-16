@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { createHash, timingSafeEqual } from "crypto";
 import { headers } from "next/headers";
 import {
   assertLoginNotRateLimited,
@@ -7,6 +8,17 @@ import {
   getClientIpFromHeaders,
   recordFailedLoginAttempt,
 } from "@/lib/rateLimit";
+
+/**
+ * Constant-time string compare via SHA-256 digests.
+ * Avoids timingSafeEqual throwing on unequal lengths and avoids an
+ * obvious early-return length check on the raw credential bytes.
+ */
+function safeEqualString(provided: string, expected: string): boolean {
+  const a = createHash("sha256").update(provided, "utf8").digest();
+  const b = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(a, b);
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -37,13 +49,14 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const expectedUser = process.env.ADMIN_USERNAME;
-        const expectedPass = process.env.ADMIN_PASSWORD;
-        const ok =
-          Boolean(expectedUser) &&
-          Boolean(expectedPass) &&
-          username === expectedUser &&
-          password === expectedPass;
+        const expectedUser = process.env.ADMIN_USERNAME ?? "";
+        const expectedPass = process.env.ADMIN_PASSWORD ?? "";
+
+        // Always compare both fields (no username-vs-password short-circuit).
+        const userOk = safeEqualString(username, expectedUser);
+        const passOk = safeEqualString(password, expectedPass);
+        const configured = expectedUser.length > 0 && expectedPass.length > 0;
+        const ok = configured && userOk && passOk;
 
         if (!ok) {
           await recordFailedLoginAttempt({ ip, username });
