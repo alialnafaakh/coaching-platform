@@ -12,6 +12,10 @@ import {
   getConsultationSettings,
 } from "@/lib/consultationSettings";
 import { isIstanbulSlotStartInFuture } from "@/lib/consultationAccess";
+import {
+  enforceBookingIpRateLimit,
+  getClientIpFromRequest,
+} from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +43,24 @@ export async function POST(req: NextRequest) {
 
   if (!slot_id || !date || !start_time) {
     return clientError("invalid_slot", "Please select a valid date and time.", 400);
+  }
+
+  // Rate limit before any slot reservation / appointment mutation.
+  // Fail-open on missing IP or limiter backend issues (atomic booking still protects inventory).
+  const ip = getClientIpFromRequest(req);
+  const limitResult = await enforceBookingIpRateLimit(ip);
+  if (limitResult.action === "deny") {
+    const retryAfter = Math.max(1, limitResult.decision.retryAfterSeconds || 1);
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        message: "Too many booking attempts. Please try again shortly.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfter) },
+      }
+    );
   }
 
   const db = getSupabaseAdmin();

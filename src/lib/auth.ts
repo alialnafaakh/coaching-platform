@@ -1,5 +1,12 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { headers } from "next/headers";
+import {
+  assertLoginNotRateLimited,
+  clearLoginRateLimits,
+  getClientIpFromHeaders,
+  recordFailedLoginAttempt,
+} from "@/lib/rateLimit";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -10,16 +17,41 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const username = credentials?.username;
-        const password = credentials?.password;
+        const username =
+          typeof credentials?.username === "string" ? credentials.username : "";
+        const password =
+          typeof credentials?.password === "string" ? credentials.password : "";
 
-        if (
-          username === process.env.ADMIN_USERNAME &&
-          password === process.env.ADMIN_PASSWORD
-        ) {
-          return { id: "1", name: "Admin", email: "admin@coaching.com" };
+        let ip: string | null = null;
+        try {
+          const hdrs = await headers();
+          ip = getClientIpFromHeaders(hdrs);
+        } catch {
+          // headers() unavailable outside a request context — treat as missing IP.
+          ip = null;
         }
-        return null;
+
+        const gate = await assertLoginNotRateLimited({ ip, username });
+        if (gate.blocked) {
+          // Same outcome as bad credentials (no enumeration). Fail-closed on limiter errors.
+          return null;
+        }
+
+        const expectedUser = process.env.ADMIN_USERNAME;
+        const expectedPass = process.env.ADMIN_PASSWORD;
+        const ok =
+          Boolean(expectedUser) &&
+          Boolean(expectedPass) &&
+          username === expectedUser &&
+          password === expectedPass;
+
+        if (!ok) {
+          await recordFailedLoginAttempt({ ip, username });
+          return null;
+        }
+
+        await clearLoginRateLimits({ ip, username });
+        return { id: "1", name: "Admin", email: "admin@coaching.com" };
       },
     }),
   ],
