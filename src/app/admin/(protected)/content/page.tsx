@@ -251,20 +251,57 @@ export default function ContentEditor() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    const useAr = isAr(currentLang);
     setUploadingImage(true);
     setMsg("");
     const formData = new FormData();
     formData.append("file", file);
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const code = typeof data.error === "string" ? data.error : "upload_failed";
+        const messages: Record<string, string> = useAr
+          ? {
+              unauthorized: "غير مصرح. يرجى تسجيل الدخول مرة أخرى.",
+              no_file: "لم يتم اختيار ملف.",
+              file_too_large: "الملف كبير جدًا. الحد الأقصى 5 ميجابايت.",
+              unsupported_image_type: "نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP.",
+              invalid_image: "الصورة غير صالحة أو تالفة.",
+              upload_failed: "تعذّر رفع الصورة. حاول مرة أخرى.",
+            }
+          : {
+              unauthorized: "Unauthorized. Please sign in again.",
+              no_file: "No file selected.",
+              file_too_large: "File is too large. Maximum size is 5 MB.",
+              unsupported_image_type: "Unsupported image type. Use JPEG, PNG, or WebP.",
+              invalid_image: "Invalid or corrupt image.",
+              upload_failed: "Upload failed. Please try again.",
+            };
+        throw new Error(messages[code] || messages.upload_failed);
+      }
+      if (typeof data.url !== "string" || !data.url) {
+        throw new Error(
+          useAr ? "تعذّر رفع الصورة. حاول مرة أخرى." : "Upload failed. Please try again."
+        );
+      }
       handleChange("about", "imageUrl", data.url);
-      setMsg("✓ Image uploaded successfully (Remember to save changes!)");
-    } catch (err: any) {
-      setMsg(`Error uploading image: ${err.message}`);
+      setMsg(
+        useAr
+          ? "✓ تم رفع الصورة بنجاح (لا تنسَ حفظ التغييرات!)"
+          : "✓ Image uploaded successfully (Remember to save changes!)"
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : useAr
+            ? "تعذّر رفع الصورة. حاول مرة أخرى."
+            : "Upload failed. Please try again.";
+      setMsg(useAr ? `خطأ في رفع الصورة: ${message}` : `Error uploading image: ${message}`);
     } finally {
       setUploadingImage(false);
+      e.target.value = "";
     }
   };
 
@@ -606,11 +643,14 @@ export default function ContentEditor() {
                 <div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleImageUpload}
                     disabled={uploadingImage}
                     className="text-sm text-[#6b7280] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#0d7377]/10 file:text-[#0d7377] hover:file:bg-[#0d7377]/20 transition-all"
                   />
+                  <p className="text-xs text-[#9ca3af] mt-2">
+                    {ar ? "JPEG أو PNG أو WebP — الحد الأقصى 5 ميجابايت" : "JPEG, PNG or WebP — Maximum 5 MB"}
+                  </p>
                   {uploadingImage && (
                     <p className="text-xs text-[#0d7377] mt-2">{ar ? "جاري الرفع..." : "Uploading..."}</p>
                   )}
