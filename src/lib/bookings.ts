@@ -83,22 +83,26 @@ export async function expireExpiredHolds(db: SupabaseClient): Promise<void> {
   if (error || !expired?.length) return;
 
   const ids = expired.map((row) => row.id);
-  await db
+  const { data: cancelled, error: cancelError } = await db
     .from("appointments")
     .update({ status: "cancelled", payment_status: "failed" })
     .in("id", ids)
-    .eq("status", "pending_payment");
+    .eq("status", "pending_payment")
+    .eq("payment_status", "unpaid")
+    .select("id, slot_id");
 
-  const slotIds = Array.from(new Set(expired.map((row) => row.slot_id)));
+  if (cancelError || !cancelled?.length) return;
+
+  const slotIds = Array.from(new Set(cancelled.map((row) => row.slot_id)));
   for (const slotId of slotIds) {
-    const { data: blockers } = await db
+    const { data: blockers, error: blockersError } = await db
       .from("appointments")
       .select("id")
       .eq("slot_id", slotId)
       .in("status", ACTIVE_STATUSES)
       .limit(1);
 
-    if (!blockers?.length) {
+    if (!blockersError && !blockers?.length) {
       await db.from("time_slots").update({ is_booked: false }).eq("id", slotId);
     }
   }

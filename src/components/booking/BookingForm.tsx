@@ -83,7 +83,20 @@ export default function BookingForm({ slot, date, draft, onDraftChange }: Props)
       if (!id || !token) {
         throw new Error(t("error_generic"));
       }
-      window.location.href = `/booking-confirmed?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`;
+      // The hold already exists. Checkout never creates another appointment.
+      try {
+        const checkout = await fetch("/api/payments/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appointment_id: id, token }),
+        });
+        const payment = await checkout.json();
+        if (!checkout.ok || typeof payment.url !== "string") throw new Error();
+        window.location.assign(payment.url);
+      } catch {
+        // Keep access to the existing hold when configuration or checkout fails.
+        window.location.href = `/booking-confirmed?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&payment=unavailable`;
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("error_generic"));
     } finally {

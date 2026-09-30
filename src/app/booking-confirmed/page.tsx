@@ -69,6 +69,30 @@ function BookingConfirmedContent() {
   const [appointment, setAppointment] = useState<PublicAppointment | null>(null);
   const [loading, setLoading] = useState(Boolean(id && token));
   const [error, setError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+
+  async function requestCheckout() {
+    if (!id || !token) return;
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    try {
+      const response = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointment_id: id, token }),
+      });
+      const data = await response.json();
+      if (!response.ok || typeof data.url !== "string") {
+        throw new Error(data.message || "Checkout is unavailable. Please contact support.");
+      }
+      window.location.assign(data.url);
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Checkout is unavailable. Please contact support.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!id || !token) {
@@ -78,14 +102,22 @@ function BookingConfirmedContent() {
     }
 
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
-    fetch(`/api/bookings/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`)
+    // Browser return is informational. Only read database state; the webhook
+    // owns payment confirmation. Poll while the hold is still pending.
+    const load = () => fetch(`/api/bookings/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`, { cache: "no-store" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.message || t("booking_not_found"));
         }
-        if (!cancelled) setAppointment(data.appointment);
+        if (!cancelled) {
+          setAppointment(data.appointment);
+          if (data.appointment?.status === "pending_payment") {
+            timer = setTimeout(load, 3000);
+          }
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -95,9 +127,11 @@ function BookingConfirmedContent() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    void load();
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [id, token, t]);
 
@@ -214,9 +248,25 @@ function BookingConfirmedContent() {
                     {t("payment_required")}
                   </p>
                   <p className={`text-sm text-[#6b7280] leading-relaxed ${isRtl ? "font-arabic" : ""}`}>
-                    {t("payment_next_note")}
+                    {lang === "ar" ? "أكملي الدفع التجريبي. يبقى الموعد بانتظار تأكيد الدفع الآمن." : "Complete test checkout. Your appointment remains pending until payment is verified."}
                   </p>
+                  {searchParams.get("payment") === "unavailable" && (
+                    <p className="mt-3 text-sm text-amber-800">
+                      {lang === "ar" ? "تعذر تجهيز الدفع. تم الاحتفاظ بحجزك المؤقت؛ تواصلي معنا إذا استمرت المشكلة." : "Checkout could not be prepared. Your existing hold is preserved; contact support if this continues."}
+                    </p>
+                  )}
+                  <button type="button" onClick={requestCheckout} disabled={checkoutLoading}
+                    className="mt-4 w-full rounded-xl bg-[#0d7377] px-5 py-3 text-sm text-white disabled:opacity-60">
+                    {checkoutLoading ? (lang === "ar" ? "جاري تجهيز الدفع…" : "Preparing checkout…") : lang === "ar" ? "الدفع التجريبي عبر ويل" : "Continue to Wayl test checkout"}
+                  </button>
+                  {checkoutError && <p role="alert" className="mt-3 text-sm text-red-600">{checkoutError}</p>}
                 </div>
+              )}
+
+              {appointment?.status === "cancelled" && appointment.payment_status === "paid" && (
+                <p role="status" className="mb-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                  {lang === "ar" ? "تم استلام الدفع بعد انتهاء الحجز أو إلغائه. لم تتم إعادة حجز الموعد. يرجى التواصل معنا للمراجعة اليدوية." : "Payment was received after the hold ended or was cancelled. The time has not been rebooked. Please contact support for manual review."}
+                </p>
               )}
 
               {copy.tone === "confirmed" &&
