@@ -96,3 +96,26 @@ The public Wayl documentation does not specify a complete webhook schema or its
 paymentStatus enum. A real signed TEST fixture should be checked against the strict
 parser before enabling any customer testing. No real payment request was sent during
 implementation. No schema migration is needed.
+
+
+## First-attempt checkout diagnosis
+
+The former payment-free booking flow (introduced in `c1263d6`) redirected straight
+from hold creation to the booking page. It was replaced by immediate TEST checkout
+in `8c1e203`; manual admin confirmation was disabled in `7b55248`. The current
+booking endpoint creates a pending/unpaid hold with a NULL payment reference. Only
+the checkout endpoint claims the reference, immediately before requesting the link.
+
+The full-flow test exercises the actual booking, settings, checkout, webhook and
+email implementations against an in-memory database and mocked providers. It checks
+slot exclusion, configured discounted pricing, the FIRST checkout, confirmation,
+invitation delivery and retry deduplication. It does not establish production readiness.
+
+For a production first-attempt 409, use the existing short diagnostic code or JSON
+response message to identify the failing branch before changing behavior. State,
+pricing, an existing reference, a claim conflict and an invalid remaining hold can
+all reject before Wayl is contacted. In particular, settings currently permit a zero
+base price or 100% discount, whereas Wayl requires a positive snapshot and at least
+1000 IQD. Do not substitute a default charge for an invalid configured price, clear a
+claimed reference, or bypass validation to make checkout succeed. A missing diagnostic
+or production state is insufficient evidence to identify the production root cause.

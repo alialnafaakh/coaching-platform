@@ -56,11 +56,12 @@ function setup(overrides = {}, envOverrides = {}) {
   }];
   state.time_slots = [{ id: 'slot-1', is_booked: true }];
   const db = { from(table) {
-    assert.ok(['appointments', 'time_slots'].includes(table));
-    let patch = null, single = false, cap = Infinity;
+    assert.ok(['appointments', 'time_slots', 'consultation_settings'].includes(table));
+    let patch = null, insert = null, single = false, cap = Infinity;
     const filters = [];
     const q = {
       select() { return q; }, update(value) { patch = value; return q; },
+      insert(value) { insert = value; return q; }, single() { single = true; return q; },
       eq(k, v) { filters.push(r => r[k] === v); return q; },
       is(k, v) { filters.push(r => r[k] === v); return q; },
       gt(k, v) { filters.push(r => r[k] > v); return q; },
@@ -72,6 +73,13 @@ function setup(overrides = {}, envOverrides = {}) {
       then(resolve, reject) {
         return Promise.resolve().then(() => {
           if (state.beforeQuery) state.beforeQuery({ table, patch, state });
+          if (insert) {
+            const row = { id: '11111111-1111-4111-8111-111111111111',
+              consultation_email_sent_at: null, consultation_email_last_error: null,
+              ...insert, time_slots: { ...state.time_slots[0] } };
+            state[table].push(row);
+            state.writes.push({ table, patch: { ...insert } });
+          }
           const rows = state[table].filter(r => filters.every(f => f(r))).slice(0, cap);
           if (patch) for (const r of rows) {
             state.writes.push({ table, patch: { ...patch } }); Object.assign(r, patch);
@@ -106,6 +114,13 @@ function setup(overrides = {}, envOverrides = {}) {
     '@/lib/bookings': bookings, '@/lib/supabase': { getSupabaseAdmin() { state.dbCalls = (state.dbCalls || 0) + 1; return db; } },
     '@/lib/consultationEmail': email,
   };
+  const settings = load('src/lib/consultationSettings.ts', {}, env);
+  const createBooking = load('src/app/api/bookings/route.ts', {
+    ...imports, '@/lib/consultationSettings': settings,
+    '@/lib/consultationAccess': { isIstanbulSlotStartInFuture: () => true },
+    '@/lib/rateLimit': { getClientIpFromRequest: () => null,
+      enforceBookingIpRateLimit: async () => ({ action: 'allow' }) },
+  }, env).POST;
   const checkout = load('src/app/api/payments/checkout/route.ts', imports, env).POST;
   const webhook = load('src/app/api/payments/webhook/route.ts', imports, env).POST;
   const requestCheckout = (token = 'synthetic-join') => checkout(new Request('https://example.test/api/payments/checkout', {
@@ -118,7 +133,7 @@ function setup(overrides = {}, envOverrides = {}) {
   };
   const adminConfirm = load('src/app/api/appointments/[id]/confirm/route.ts', imports, env).POST;
   const requestAdminConfirm = () => adminConfirm(new Request('https://example.test'), { params: Promise.resolve({ id: state.appointments[0].id }) });
-  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm, email };
+  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm, email, createBooking };
 }
 
 test('checkout uses the existing snapshot/hold, official TEST body and returned URL', async () => {
@@ -362,4 +377,46 @@ test('failed payments cannot confirm or email; unpaid admin resend is rejected',
   assert.equal((await s.email.sendConsultationInvitationEmail(s.db, s.state.appointments[0].id, { force: true })).ok, false);
   assert.equal(s.state.emails.size, 0);
   assert.equal(s.state.writes.length, 0);
+});
+
+
+test('first checkout: available slot -> configured-price hold -> TEST link -> signed payment -> confirmation and email', async () => {
+  const s = setup();
+  s.state.appointments = [];
+  s.state.time_slots = [{ id: 'slot-1', is_booked: false, date: '2026-10-02', start_time: '12:00:00', end_time: '12:40:00' }];
+  s.state.consultation_settings = [{ id: 1, session_duration_minutes: 40, base_price_usd: '83.50', discount_percent: '20.00' }];
+  const submit = () => s.createBooking(new Request('https://example.test/api/bookings', {
+    method: 'POST', body: JSON.stringify({ slot_id: 'slot-1', date: '2026-10-02',
+      start_time: '12:00:00', client_name: 'Test Customer', client_email: 'customer@example.test' }),
+  }));
+  const booking = await submit();
+  assert.equal(booking.status, 201);
+  const { appointment, token } = await booking.json();
+  assert.equal(appointment.status, 'pending_payment');
+  assert.equal(appointment.payment_status, 'unpaid');
+  assert.equal(appointment.final_price_usd, 66.8);
+  assert.equal(s.state.appointments[0].payment_reference, null);
+  assert.equal(s.state.time_slots[0].is_booked, true);
+  assert.equal(s.state.requests.length, 0);
+  assert.equal(s.state.emails.size, 0);
+  assert.equal((await submit()).status, 409);
+  const checkout = await s.requestCheckout(token);
+  assert.equal(checkout.status, 200);
+  assert.match((await checkout.json()).url, /^https:\/\/checkout.thewayl.com\//);
+  assert.equal(s.state.requests.length, 1);
+  const body = s.state.requests[0].body;
+  assert.equal(body.env, 'test');
+  assert.equal(body.total, 6680);
+  assert.equal(s.state.appointments[0].status, 'pending_payment');
+  assert.equal(s.state.appointments[0].payment_status, 'unpaid');
+  assert.equal(s.state.emails.size, 0);
+  assert.equal((await s.event({ total: 6680 })).status, 200);
+  assert.equal(s.state.appointments[0].status, 'confirmed');
+  assert.equal(s.state.appointments[0].payment_status, 'paid');
+  assert.equal(s.state.time_slots[0].is_booked, true);
+  assert.equal(s.state.emailAttempts, 1);
+  assert.ok(s.state.emailMessages[0].text.includes(token));
+  assert.equal((await s.event({ total: 6680 })).status, 200);
+  assert.equal(s.state.emailAttempts, 1);
+  assert.equal(s.state.requests.length, 1);
 });
