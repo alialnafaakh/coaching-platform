@@ -97,7 +97,7 @@ export async function createPaymentLink(input: {
   appointmentId: string;
   joinToken: string;
   expiresAt: string;
-}): Promise<string> {
+}): Promise<{ url: string; expiresAt: string }> {
   const config = getWaylCheckoutConfig();
   const minutes = Math.floor((Date.parse(input.expiresAt) - Date.now()) / 60000);
   if (!Number.isFinite(minutes) || minutes < 1 || minutes > 15) {
@@ -107,7 +107,11 @@ export async function createPaymentLink(input: {
   returnUrl.searchParams.set("id", input.appointmentId);
   returnUrl.searchParams.set("token", input.joinToken);
   returnUrl.searchParams.set("payment", "returned");
+  // Conservatively record link validity from before the upstream request.
+  const expiresAt = new Date(Math.min(Date.parse(input.expiresAt), Date.now() + minutes * 60000)).toISOString();
+  let diagnostic = "WAYL_CREATE_REQUEST_FAILED";
   try {
+    console.warn("WAYL_CREATE_REQUEST_STARTED");
     const response = await fetch(WAYL_API_BASE + "/links", {
       method: "POST",
       headers: {
@@ -131,15 +135,22 @@ export async function createPaymentLink(input: {
         linkExpiresIn: minutes + "m",
       }),
     });
-    if (response.status !== 201) throw new Error("Unexpected response");
+    if (response.status !== 201) {
+      diagnostic = "WAYL_CREATE_HTTP_REJECTED";
+      throw new Error("Unexpected response");
+    }
+    diagnostic = "WAYL_CREATE_JSON_INVALID";
     const payload = await response.json();
     const data = payload?.data;
+    diagnostic = "WAYL_CREATE_RESPONSE_INVALID";
     if (data?.referenceId !== input.referenceId || data?.currency !== "IQD" ||
         Number(data?.total) !== input.totalIqd || !validWaylCheckoutUrl(data?.url)) {
       throw new Error("Unexpected response");
     }
-    return data.url;
+    console.warn("WAYL_CREATE_RESPONSE_VALID");
+    return { url: data.url, expiresAt };
   } catch {
+    console.warn(diagnostic);
     // Never forward upstream messages, response bodies, tokens or callback URLs.
     throw new WaylError("Unable to prepare test checkout. Please contact support before retrying.");
   }

@@ -6,14 +6,14 @@ const vm = require('node:vm');
 const crypto = require('node:crypto');
 const ts = require('typescript');
 
-function load(file, imports, env, fetch) {
+function load(file, imports, env, fetch, logger) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   vm.runInNewContext(js, {
     exports, process: { env }, Buffer, URL, Uint8Array, AbortSignal, Date,
-    console: { error() {}, warn() {} },
+    console: logger || { error() {}, warn() {} },
     fetch: fetch || (() => { throw new Error('Network forbidden'); }),
     require(name) {
       if (name === 'crypto') return crypto;
@@ -33,7 +33,7 @@ function setup(overrides = {}, envOverrides = {}) {
     NEXT_PUBLIC_SITE_URL: 'https://example.test', RESEND_API_KEY: 'synthetic-email-key',
     EMAIL_FROM: 'coach@example.test', EMAIL_REPLY_TO: 'coach@example.test', ...envOverrides,
   };
-  const state = { requests: [], writes: [], reads: 0, emails: new Set(), reply: 'valid' };
+  const state = { requests: [], writes: [], reads: 0, emails: new Set(), reply: 'valid', diagnostics: [] };
   const wayl = load('src/lib/wayl.ts', {}, env, async (url, options) => {
     const body = JSON.parse(options.body);
     state.requests.push({ url, options, body });
@@ -41,8 +41,11 @@ function setup(overrides = {}, envOverrides = {}) {
     if (state.reply === 'error') return { status: 400, json: async () => ({ message: 'synthetic-private-detail' }) };
     const data = { referenceId: body.referenceId, total: String(body.total), currency: 'IQD' };
     if (state.reply !== 'no-url') data.url = state.reply === 'evil-url' ? 'https://evil.test/pay/x' : 'https://checkout.thewayl.com/payment/action?id=test-link';
-    return { status: 201, json: async () => ({ data }) };
-  });
+    return { status: 201, json: async () => {
+      if (state.reply === 'invalid-json') throw new Error('synthetic-private-detail');
+      return { data };
+    } };
+  }, { warn: code => state.diagnostics.push(code) });
   const quote = wayl.quoteWaylPayment(50, 100); // Synthetic fixture rate, never local configuration.
   state.appointments = [{
     id: '11111111-1111-4111-8111-111111111111', slot_id: 'slot-1', join_token: 'synthetic-join',
@@ -73,6 +76,7 @@ function setup(overrides = {}, envOverrides = {}) {
       then(resolve, reject) {
         return Promise.resolve().then(() => {
           if (state.beforeQuery) state.beforeQuery({ table, patch, state });
+          if (patch?.payment_checkout_url && state.persistFailure) return { data: null, error: {} };
           if (insert) {
             const row = { id: '11111111-1111-4111-8111-111111111111',
               consultation_email_sent_at: null, consultation_email_last_error: null,
@@ -121,7 +125,7 @@ function setup(overrides = {}, envOverrides = {}) {
     '@/lib/rateLimit': { getClientIpFromRequest: () => null,
       enforceBookingIpRateLimit: async () => ({ action: 'allow' }) },
   }, env).POST;
-  const checkout = load('src/app/api/payments/checkout/route.ts', imports, env).POST;
+  const checkout = load('src/app/api/payments/checkout/route.ts', imports, env, undefined, { warn: code => state.diagnostics.push(code) }).POST;
   const webhook = load('src/app/api/payments/webhook/route.ts', imports, env).POST;
   const requestCheckout = (token = 'synthetic-join') => checkout(new Request('https://example.test/api/payments/checkout', {
     method: 'POST', body: JSON.stringify({ appointment_id: state.appointments[0].id, token, total: 1 }),
@@ -214,7 +218,7 @@ test('unauthorized, paid, cancelled, expired, invalid snapshot and repeated chec
 });
 
 test('upstream errors/timeouts/invalid URLs are sanitized and retain the claimed reference', async () => {
-  for (const reply of ['error', 'timeout', 'no-url', 'evil-url']) {
+  for (const reply of ['error', 'timeout', 'invalid-json', 'no-url', 'evil-url']) {
     const s = setup({ payment_reference: null }); s.state.reply = reply;
     const response = await s.requestCheckout();
     assert.equal(response.status, 502);
@@ -419,4 +423,68 @@ test('first checkout: available slot -> configured-price hold -> TEST link -> si
   assert.equal((await s.event({ total: 6680 })).status, 200);
   assert.equal(s.state.emailAttempts, 1);
   assert.equal(s.state.requests.length, 1);
+});
+
+
+test('lost checkout response is recoverable using persisted URL without creating another link', async () => {
+  const s = setup({ payment_reference: null });
+  const first = await s.requestCheckout();
+  const { url } = await first.json();
+  const reference = s.state.appointments[0].payment_reference;
+  assert.equal(s.state.appointments[0].payment_checkout_url, url);
+  assert.ok(Date.parse(s.state.appointments[0].payment_checkout_expires_at) <= Date.parse(s.state.appointments[0].payment_expires_at));
+  const responses = await Promise.all([s.requestCheckout(), s.requestCheckout()]);
+  for (const response of responses) {
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).url, url);
+  }
+  assert.equal(s.state.requests.length, 1);
+  assert.equal(s.state.appointments[0].payment_reference, reference);
+  assert.equal(s.state.appointments[0].payment_status, 'unpaid');
+  assert.equal(s.state.appointments[0].status, 'pending_payment');
+  assert.equal(s.state.emails.size, 0);
+  assert.ok(s.state.diagnostics.includes('CHECKOUT_REUSED'));
+  assert.ok(s.state.diagnostics.every(code => /^[A-Z_]+$/.test(code)));
+});
+
+test('reuse rejects invalid, expired, mismatched and non-TEST checkout state without another request', async () => {
+  for (const patch of [{ payment_checkout_url: 'https://evil.test/pay/x' },
+    { payment_checkout_expires_at: new Date(0).toISOString() },
+    { payment_checkout_expires_at: new Date(Date.now() + 1800000).toISOString() },
+    { payment_provider: 'qicard' }, { final_price_usd: 51 }, { status: 'confirmed', payment_status: 'paid' }]) {
+    const s = setup({ payment_reference: null });
+    assert.equal((await s.requestCheckout()).status, 200);
+    Object.assign(s.state.appointments[0], patch);
+    assert.equal((await s.requestCheckout()).status, 409);
+    assert.equal(s.state.requests.length, 1);
+  }
+  const s = setup({ payment_reference: null });
+  assert.equal((await s.requestCheckout()).status, 200);
+  s.env.WAYL_ENV = 'live';
+  assert.equal((await s.requestCheckout()).status, 503);
+  assert.equal(s.state.requests.length, 1);
+});
+
+test('successful link with failed persistence retains claim and blocks ambiguous retries', async () => {
+  const s = setup({ payment_reference: null }); s.state.persistFailure = true;
+  assert.equal((await s.requestCheckout()).status, 503);
+  assert.ok(s.state.appointments[0].payment_reference);
+  assert.equal(s.state.appointments[0].payment_checkout_url, undefined);
+  assert.equal((await s.requestCheckout()).status, 409);
+  assert.equal(s.state.requests.length, 1);
+  assert.ok(s.state.diagnostics.includes('CHECKOUT_PERSIST_FAILED'));
+});
+
+test('first-request diagnostics distinguish request, HTTP, JSON and validation failures using codes only', async () => {
+  for (const [reply, code] of [['timeout', 'WAYL_CREATE_REQUEST_FAILED'],
+    ['error', 'WAYL_CREATE_HTTP_REJECTED'], ['invalid-json', 'WAYL_CREATE_JSON_INVALID'],
+    ['no-url', 'WAYL_CREATE_RESPONSE_INVALID'], ['evil-url', 'WAYL_CREATE_RESPONSE_INVALID']]) {
+    const s = setup({ payment_reference: null }); s.state.reply = reply;
+    assert.equal((await s.requestCheckout()).status, 502);
+    assert.ok(s.state.diagnostics.includes('WAYL_CREATE_REQUEST_STARTED'));
+    assert.ok(s.state.diagnostics.includes(code));
+    assert.ok(s.state.diagnostics.every(code => /^[A-Z_]+$/.test(code)));
+    assert.equal((await s.requestCheckout()).status, 409);
+    assert.equal(s.state.requests.length, 1);
+  }
 });

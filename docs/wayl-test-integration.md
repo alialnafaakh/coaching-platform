@@ -36,7 +36,10 @@ checkout path. No URL is synthesized from a code. Requests use `env=test`, `line
 IQD, the signed webhook callback, and a return URL containing appointment ID and token.
 The link expiry is rounded down to the remaining whole minutes of the booking hold.
 
-Duplicate/concurrent checkout attempts cannot issue another link. On an API error,
+Duplicate/concurrent checkout attempts cannot issue another link. A validated successful
+checkout URL and conservative expiry are saved before the response. Authorized retries
+reuse that URL only while the unpaid hold and link are valid, the provider/reference
+match, and TEST mode remains enabled. On an API error,
 timeout, or invalid response, the reference stays attached because Wayl may already
 have created the link. Contact support for reconciliation instead of clearing the
 reference and risking a second charge. The hold retains its original expiry.
@@ -95,7 +98,9 @@ until the merchant supplies a valid exchange rate and a test callback origin.
 The public Wayl documentation does not specify a complete webhook schema or its
 paymentStatus enum. A real signed TEST fixture should be checked against the strict
 parser before enabling any customer testing. No real payment request was sent during
-implementation. No schema migration is needed.
+implementation. Apply `supabase-migration-wayl-checkout-recovery.sql` manually before deploying
+checkout recovery. It adds nullable private URL/expiry columns; it does not change
+existing payment references or booking records. Never auto-apply it to production.
 
 
 ## First-attempt checkout diagnosis
@@ -119,3 +124,23 @@ base price or 100% discount, whereas Wayl requires a positive snapshot and at le
 1000 IQD. Do not substitute a default charge for an invalid configured price, clear a
 claimed reference, or bypass validation to make checkout succeed. A missing diagnostic
 or production state is insufficient evidence to identify the production root cause.
+
+
+## Creation and recovery diagnostics
+
+The atomic reference claim happens before Wayl is contacted. Any request failure,
+unexpected HTTP response, malformed JSON or rejected response fields retains that
+claim because upstream creation may have succeeded. The form then navigates to
+`payment=unavailable`; without a saved valid checkout, retries remain blocked.
+Previously, even successful URLs were not persisted, so a lost response or failed
+browser navigation had no recovery path. Saving validated links closes that gap;
+ambiguous creation and persistence failures still require reconciliation.
+
+Vercel server logs now receive only fixed diagnostic codes: `WAYL_CREATE_REQUEST_STARTED`,
+`WAYL_CREATE_REQUEST_FAILED`, `WAYL_CREATE_HTTP_REJECTED`, `WAYL_CREATE_JSON_INVALID`,
+`WAYL_CREATE_RESPONSE_INVALID`, `WAYL_CREATE_RESPONSE_VALID`, `CHECKOUT_PERSIST_FAILED`,
+`CHECKOUT_READY` and `CHECKOUT_REUSED`. Inspect the ORIGINAL checkout invocation, not
+only retries. A missing external fetch span does not establish that no request occurred;
+the earlier implementation caught and sanitized every failure without logging its stage.
+No response bodies, URLs, references, tokens, customer data or environment values are logged.
+`CHECKOUT_ALREADY_REQUESTED` alone cannot identify the initial upstream failure.

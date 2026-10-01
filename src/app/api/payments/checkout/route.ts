@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { tokensMatch } from "@/lib/bookings";
-import { createPaymentLink, getWaylCheckoutConfig, quoteWaylPayment, WaylError } from "@/lib/wayl";
+import { createPaymentLink, getWaylCheckoutConfig, quoteWaylPayment, referenceAmount, requireWaylTestMode, validWaylCheckoutUrl, WaylError } from "@/lib/wayl";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
     const db = getSupabaseAdmin();
     const { data: appointment, error } = await db.from("appointments")
-      .select("id, join_token, status, payment_status, payment_expires_at, payment_reference, final_price_usd")
+      .select("id, join_token, status, payment_status, payment_expires_at, payment_reference, payment_provider, final_price_usd, payment_checkout_url, payment_checkout_expires_at")
       .eq("id", id).maybeSingle();
     if (error) return failure("Unable to load this booking.", 503);
     if (!appointment?.join_token || !tokensMatch(token, appointment.join_token)) {
@@ -35,6 +35,15 @@ export async function POST(req: NextRequest) {
       return failure("This booking is no longer available for checkout.", 409);
     }
     if (appointment.payment_reference) {
+      requireWaylTestMode();
+      const checkoutExpiry = Date.parse(appointment.payment_checkout_expires_at || "");
+      if (appointment.payment_provider === "wayl" &&
+          validWaylCheckoutUrl(appointment.payment_checkout_url) &&
+          Number.isFinite(checkoutExpiry) && checkoutExpiry > Date.now() && checkoutExpiry <= expiry) {
+        referenceAmount(appointment.payment_reference, appointment.final_price_usd);
+        console.warn("CHECKOUT_REUSED");
+        return NextResponse.json({ url: appointment.payment_checkout_url }, { headers: { "Cache-Control": "no-store" } });
+      }
       console.warn("CHECKOUT_ALREADY_REQUESTED");
       return failure("Checkout has already been requested. Contact support if you cannot complete it.", 409);
     }
@@ -56,11 +65,23 @@ export async function POST(req: NextRequest) {
     // Retain the reference on errors/timeouts: Wayl may have accepted the request.
     // Never erase a possible charge or issue a second link for this appointment.
     conflictDiagnostic = "CHECKOUT_HOLD_INVALID";
-    const url = await createPaymentLink({
+    const checkout = await createPaymentLink({
       ...quote, appointmentId: id, joinToken: appointment.join_token,
       expiresAt: appointment.payment_expires_at,
     });
-    return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
+    const { data: saved, error: saveError } = await db.from("appointments")
+      .update({ payment_checkout_url: checkout.url, payment_checkout_expires_at: checkout.expiresAt })
+      .eq("id", id).eq("join_token", appointment.join_token)
+      .eq("payment_reference", quote.referenceId).eq("payment_provider", "wayl")
+      .eq("status", "pending_payment").eq("payment_status", "unpaid")
+      .gt("payment_expires_at", new Date().toISOString())
+      .select("id").maybeSingle();
+    if (saveError || !saved) {
+      console.warn("CHECKOUT_PERSIST_FAILED");
+      return failure("Unable to save checkout access. Please contact support before retrying.", 503);
+    }
+    console.warn("CHECKOUT_READY");
+    return NextResponse.json({ url: checkout.url }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof WaylError && error.status === 409) {
       console.warn(conflictDiagnostic);
