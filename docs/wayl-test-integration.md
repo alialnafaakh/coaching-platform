@@ -68,9 +68,17 @@ booking page displays a support message, and the existing admin appointment tabl
 exposes the paid/cancelled state. A human must reconcile the payment/refund and schedule;
 the integration does not initiate refunds. An invalid hold timestamp fails for review.
 
+The form creates the existing temporary hold in the background and immediately redirects
+into TEST checkout. Before verified payment, the UI displays only payment/setup states,
+never booking success. Checkout failure returns to the existing access link with a
+payment setup error, preserving the hold without claiming confirmation.
+
 The browser return only reads/polls booking state; URL parameters are never proof of
-payment. Polling stops once the appointment leaves `pending_payment`. Checkout failure
-returns the customer to their existing booking access link, preserving the hold.
+payment. A pending return shows “Verifying payment” and does not offer another checkout.
+Confirmation and consultation links require both a paid database state and a confirmed
+(or later active/completed) lifecycle state. Transient status-read failures are retried;
+polling stops at paid confirmation or cancellation. Admin confirmation also requires an
+already-paid appointment, so it cannot bypass payment verification.
 
 ## Validation without payment requests
 

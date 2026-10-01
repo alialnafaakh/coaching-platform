@@ -58,6 +58,7 @@ export default function BookingForm({ slot, date, draft, onDraftChange }: Props)
 
   const handleReserve = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
     try {
@@ -117,7 +118,7 @@ export default function BookingForm({ slot, date, draft, onDraftChange }: Props)
     >
       <div className="p-4 rounded-xl bg-[#0d7377]/6 border border-[#0d7377]/15">
         <p className={`text-xs text-[#0d7377] font-medium uppercase tracking-wider mb-1 ${isRtl ? "font-arabic" : ""}`}>
-          {t("your_booking")}
+          {t("selected_session")}
         </p>
         <p className={`text-sm font-semibold text-[#1a1a2e] ${isRtl ? "font-arabic" : ""}`}>
           {formattedDate} {isRtl ? "في" : "at"}{" "}

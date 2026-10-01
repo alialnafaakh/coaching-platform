@@ -6,59 +6,10 @@ import { Suspense, useEffect, useState } from "react";
 import { format } from "date-fns";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { useLanguage, type StringTranslationKey } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import type { PublicAppointment } from "@/types";
+import { bookingStatusCopy } from "@/lib/bookingStatus";
 
-function statusCopy(
-  appointment: PublicAppointment | null,
-  t: (key: StringTranslationKey) => string
-) {
-  if (!appointment) {
-    return {
-      badge: t("payment_required"),
-      headline: t("booking_pending_headline"),
-      tone: "pending" as const,
-    };
-  }
-
-  if (appointment.status === "confirmed") {
-    return {
-      badge: t("confirmed_label"),
-      headline: t("booked_headline"),
-      tone: "confirmed" as const,
-    };
-  }
-
-  if (appointment.status === "in_progress") {
-    return {
-      badge: t("in_progress_label"),
-      headline: t("in_progress_label"),
-      tone: "confirmed" as const,
-    };
-  }
-
-  if (appointment.status === "completed") {
-    return {
-      badge: t("completed_label"),
-      headline: t("completed_label"),
-      tone: "confirmed" as const,
-    };
-  }
-
-  if (appointment.status === "cancelled") {
-    return {
-      badge: t("cancelled_label"),
-      headline: t("expired_hold"),
-      tone: "cancelled" as const,
-    };
-  }
-
-  return {
-    badge: appointment.payment_status === "unpaid" ? t("payment_required") : t("pending_payment_label"),
-    headline: t("booking_pending_headline"),
-    tone: "pending" as const,
-  };
-}
 
 function BookingConfirmedContent() {
   const { isRtl, t, lang } = useLanguage();
@@ -84,11 +35,11 @@ function BookingConfirmedContent() {
       });
       const data = await response.json();
       if (!response.ok || typeof data.url !== "string") {
-        throw new Error(data.message || "Checkout is unavailable. Please contact support.");
+        throw new Error(t("payment_setup_error"));
       }
       window.location.assign(data.url);
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Checkout is unavailable. Please contact support.");
+    } catch {
+      setCheckoutError(t("payment_setup_error"));
     } finally {
       setCheckoutLoading(false);
     }
@@ -104,6 +55,8 @@ function BookingConfirmedContent() {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
+    setAppointment(null);
+    setError("");
     // Browser return is informational. Only read database state; the webhook
     // owns payment confirmation. Poll while the hold is still pending.
     const load = () => fetch(`/api/bookings/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`, { cache: "no-store" })
@@ -114,14 +67,17 @@ function BookingConfirmedContent() {
         }
         if (!cancelled) {
           setAppointment(data.appointment);
-          if (data.appointment?.status === "pending_payment") {
+          setError("");
+          if (data.appointment?.status !== "cancelled" &&
+              (data.appointment?.status === "pending_payment" || data.appointment?.payment_status !== "paid")) {
             timer = setTimeout(load, 3000);
           }
         }
       })
-      .catch((err: unknown) => {
+      .catch(() => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : t("error_generic"));
+          setError(t("payment_status_error"));
+          timer = setTimeout(load, 3000);
         }
       })
       .finally(() => {
@@ -135,7 +91,13 @@ function BookingConfirmedContent() {
     };
   }, [id, token, t]);
 
-  const copy = statusCopy(appointment, t);
+  const verifying = searchParams.get("payment") === "returned" || appointment?.payment_status === "paid";
+  const setupFailed = searchParams.get("payment") === "unavailable";
+  const copy = bookingStatusCopy(appointment, t);
+  if (copy.tone === "pending") {
+    copy.badge = verifying ? t("verifying_payment") : t("payment_required");
+    copy.headline = verifying ? t("verifying_payment") : setupFailed ? t("payment_setup_error") : t("booking_pending_headline");
+  }
   const locale = lang === "ar" ? "ar-EG" : "en-US";
   const formattedDate = appointment?.date
     ? new Intl.DateTimeFormat(locale, {
@@ -183,14 +145,14 @@ function BookingConfirmedContent() {
           </div>
 
           {loading ? (
-            <p className={`text-[#6b7280] ${isRtl ? "font-arabic" : ""}`}>{t("loading_booking")}</p>
+            <p className={`text-[#6b7280] ${isRtl ? "font-arabic" : ""}`}>{t("verifying_payment")}</p>
           ) : error ? (
             <>
               <h1
                 className={`text-4xl text-[#1a1a2e] mb-4 ${isRtl ? "font-arabic-display" : ""}`}
                 style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
               >
-                {t("booking_not_found")}
+                {t("payment_status_error")}
               </h1>
               <p className={`text-[#6b7280] text-base leading-relaxed mb-8 ${isRtl ? "font-arabic" : ""}`}>
                 {error}
@@ -212,13 +174,13 @@ function BookingConfirmedContent() {
                   ? t("booked_subheadline")
                   : copy.tone === "cancelled"
                     ? t("expired_hold_sub")
-                    : t("booking_pending_sub")}
+                    : verifying ? t("verifying_payment_sub") : t("booking_pending_sub")}
               </p>
 
               {appointment && (
                 <div className={`p-5 rounded-2xl border mb-6 ${isRtl ? "text-right" : "text-left"} ${toneStyles.box}`}>
                   <p className={`text-sm font-medium mb-2 ${isRtl ? "font-arabic" : ""} ${toneStyles.label}`}>
-                    {t("your_booking")}
+                    {copy.tone === "confirmed" ? t("your_booking") : t("selected_session")}
                   </p>
                   <p className={`text-sm text-[#1a1a2e] font-medium ${isRtl ? "font-arabic" : ""}`}>
                     {appointment.client_name}
@@ -239,7 +201,7 @@ function BookingConfirmedContent() {
                 </div>
               )}
 
-              {copy.tone === "pending" && (
+              {copy.tone === "pending" && !verifying && (
                 <div
                   id="booking-payment"
                   className={`p-5 rounded-2xl border border-dashed border-[#e5e0d8] bg-white mb-8 ${isRtl ? "text-right" : "text-left"}`}

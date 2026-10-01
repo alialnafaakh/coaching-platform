@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * Admin: pending_payment → confirmed.
+ * Admin: only already-paid pending_payment appointments may be confirmed.
  * Email is sent after a successful transition (never for pending_payment itself).
  * Confirmation is not rolled back if email fails.
  */
@@ -30,6 +30,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     .update({ status: "confirmed" })
     .eq("id", id)
     .eq("status", "pending_payment")
+    .eq("payment_status", "paid")
     .select("id, status")
     .maybeSingle();
 
@@ -41,14 +42,15 @@ export async function POST(_req: Request, ctx: Ctx) {
   if (!updated) {
     const { data: existing } = await db
       .from("appointments")
-      .select("id, status")
+      .select("id, status, payment_status")
       .eq("id", id)
       .maybeSingle();
 
     if (!existing) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
-    if (existing.status === "confirmed" || existing.status === "in_progress") {
+    if (existing.payment_status === "paid" &&
+        (existing.status === "confirmed" || existing.status === "in_progress")) {
       return NextResponse.json({
         success: true,
         alreadyConfirmed: true,
@@ -56,7 +58,7 @@ export async function POST(_req: Request, ctx: Ctx) {
       });
     }
     return NextResponse.json(
-      { error: "Only pending payment appointments can be confirmed." },
+      { error: "Only paid appointments awaiting confirmation can be confirmed." },
       { status: 409 }
     );
   }

@@ -31,6 +31,11 @@ export type UiStrings = {
   redirecting: string;
   confirm_pay: string;
   your_booking: string;
+  selected_session: string;
+  verifying_payment: string;
+  verifying_payment_sub: string;
+  payment_setup_error: string;
+  payment_status_error: string;
   full_name: string;
   email_address: string;
   what_brings: string;
@@ -185,6 +190,11 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     redirecting: "Redirecting to payment...",
     confirm_pay: "Confirm & Pay $50 →",
     your_booking: "Your Booking",
+    selected_session: "Selected session",
+    verifying_payment: "Verifying payment",
+    verifying_payment_sub: "We are checking your payment status. Your appointment is not confirmed until payment is verified. Please wait; do not start another payment.",
+    payment_setup_error: "Payment could not be prepared. Your appointment is not confirmed. Contact support if this continues.",
+    payment_status_error: "Unable to verify payment right now. We will keep checking. Do not start another payment.",
     full_name: "Full Name",
     email_address: "Email Address",
     what_brings: "What brings you here? (optional)",
@@ -300,17 +310,17 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     add_calendar: "Add the session to your calendar",
     intake_sent: "A brief intake questionnaire will be sent to you",
     back_home: "Back to Home",
-    reserve_session: "Reserve this time",
-    reserving: "Reserving your time…",
+    reserve_session: "Continue to test payment",
+    reserving: "Preparing test payment…",
     payment_required: "Payment required",
     pending_payment_label: "Pending payment",
     confirmed_label: "Confirmed",
     cancelled_label: "Cancelled",
     in_progress_label: "In progress",
     completed_label: "Completed",
-    booking_pending_headline: "Your time is reserved",
-    booking_pending_sub: "This session is held for you while payment is prepared. It is not confirmed until payment is completed.",
-    booking_hold_note: "Submitting this form reserves the time as pending payment. The session is not confirmed until payment is completed.",
+    booking_pending_headline: "Payment required",
+    booking_pending_sub: "Your appointment is not confirmed. Complete test payment before the temporary hold expires.",
+    booking_hold_note: "You will be redirected to Wayl test checkout. A temporary hold keeps this time available during payment; your appointment is confirmed only after payment is verified.",
     payment_next_note: "Online payment will be connected in the next step. This reservation stays unpaid until then.",
     hold_until: "Reservation held until",
     expired_hold: "This reservation has expired",
@@ -370,6 +380,11 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     redirecting: "جاري التحويل إلى الدفع...",
     confirm_pay: "تأكيد ودفع 50 دولار ←",
     your_booking: "حجزك",
+    selected_session: "الجلسة المختارة",
+    verifying_payment: "جارٍ التحقق من الدفع",
+    verifying_payment_sub: "نتحقق من حالة الدفع. الموعد غير مؤكد حتى يتم التحقق من الدفع. يرجى الانتظار وعدم بدء عملية دفع أخرى.",
+    payment_setup_error: "تعذر تجهيز الدفع. الموعد غير مؤكد. يرجى التواصل معنا إذا استمرت المشكلة.",
+    payment_status_error: "تعذر التحقق من الدفع الآن. سنواصل التحقق. يرجى عدم بدء عملية دفع أخرى.",
     full_name: "الاسم الكامل",
     email_address: "البريد الإلكتروني",
     what_brings: "ما الذي يأتي بك إلى هنا؟ (اختياري)",
@@ -485,17 +500,17 @@ const UI_STRINGS: Record<Language, UiStrings> = {
     add_calendar: "أضف الجلسة إلى تقويمك",
     intake_sent: "سيتم إرسال استبيان موجز إليك",
     back_home: "العودة للرئيسية",
-    reserve_session: "احجزي هذا الموعد",
-    reserving: "جاري حجز الموعد…",
+    reserve_session: "المتابعة إلى الدفع التجريبي",
+    reserving: "جارٍ تجهيز الدفع التجريبي…",
     payment_required: "الدفع مطلوب",
     pending_payment_label: "بانتظار الدفع",
     confirmed_label: "مؤكد",
     cancelled_label: "ملغى",
     in_progress_label: "قيد التنفيذ",
     completed_label: "مكتمل",
-    booking_pending_headline: "تم حجز الوقت",
-    booking_pending_sub: "تم حجز هذه الجلسة لك ريثما يُجهّز الدفع. لن يتم التأكيد قبل إتمام الدفع.",
-    booking_hold_note: "إرسال هذا النموذج يحجز الوقت بحالة انتظار الدفع. الجلسة غير مؤكدة حتى يكتمل الدفع.",
+    booking_pending_headline: "الدفع مطلوب",
+    booking_pending_sub: "الموعد غير مؤكد. أكملي الدفع التجريبي قبل انتهاء المهلة المؤقتة.",
+    booking_hold_note: "سيتم تحويلك إلى الدفع التجريبي عبر ويل. يُحتفظ بالوقت مؤقتًا أثناء الدفع، ولا يتم تأكيد الموعد إلا بعد التحقق من الدفع.",
     payment_next_note: "سيتم ربط الدفع الإلكتروني في الخطوة التالية. يبقى هذا الحجز غير مدفوع حتى ذلك الحين.",
     hold_until: "الحجز محفوظ حتى",
     expired_hold: "انتهت صلاحية هذا الحجز",

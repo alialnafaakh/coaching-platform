@@ -81,6 +81,8 @@ function setup(overrides = {}, envOverrides = {}) {
   const bookings = load('src/lib/bookings.ts', {}, env);
   const imports = {
     'next/server': { NextResponse: Response }, '@/lib/wayl': wayl,
+    'next-auth': { async getServerSession() { return { role: 'admin' }; } },
+    '@/lib/auth': { authOptions: {} },
     '@/lib/bookings': bookings, '@/lib/supabase': { getSupabaseAdmin() { state.dbCalls = (state.dbCalls || 0) + 1; return db; } },
     '@/lib/consultationEmail': { async notifyConsultationConfirmed(_db, id) { state.emails.add(id); } },
   };
@@ -94,7 +96,9 @@ function setup(overrides = {}, envOverrides = {}) {
     const signed = signature ?? crypto.createHmac('sha256', env.WAYL_WEBHOOK_SECRET).update(body).digest('hex');
     return webhook(new Request('https://example.test/api/payments/webhook', { method: 'POST', body, headers: header ? { [header]: signed } : {} }));
   };
-  return { state, env, wayl, bookings, db, requestCheckout, event };
+  const adminConfirm = load('src/app/api/appointments/[id]/confirm/route.ts', imports, env).POST;
+  const requestAdminConfirm = () => adminConfirm(new Request('https://example.test'), { params: Promise.resolve({ id: state.appointments[0].id }) });
+  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm };
 }
 
 test('checkout uses the existing snapshot/hold, official TEST body and returned URL', async () => {
@@ -266,4 +270,34 @@ test('stored quote survives rate changes but rejects altered appointment pricing
   const altered = setup({ final_price_usd: 51 });
   assert.equal((await altered.event()).status, 409);
   assert.equal(altered.state.writes.length, 0);
+});
+
+
+test('booking success requires paid database state; pending and cancelled payments never show success', () => {
+  const { bookingStatusCopy } = load('src/lib/bookingStatus.ts', {}, {});
+  const t = key => key;
+  assert.equal(bookingStatusCopy(null, t).tone, 'pending');
+  for (const status of ['pending_payment', 'confirmed', 'in_progress', 'completed']) {
+    for (const payment_status of ['unpaid', 'failed', 'refunded']) {
+      assert.equal(bookingStatusCopy({ status, payment_status }, t).tone, 'pending');
+    }
+  }
+  assert.equal(bookingStatusCopy({ status: 'pending_payment', payment_status: 'paid' }, t).tone, 'pending');
+  for (const status of ['confirmed', 'in_progress', 'completed']) {
+    assert.equal(bookingStatusCopy({ status, payment_status: 'paid' }, t).tone, 'confirmed');
+  }
+  assert.equal(bookingStatusCopy({ status: 'cancelled', payment_status: 'paid' }, t).tone, 'cancelled');
+});
+
+
+test('admin confirmation cannot bypass payment verification', async () => {
+  const unpaid = setup();
+  assert.equal((await unpaid.requestAdminConfirm()).status, 409);
+  assert.equal(unpaid.state.appointments[0].status, 'pending_payment');
+  assert.equal(unpaid.state.writes.length, 0);
+  assert.equal(unpaid.state.emails.size, 0);
+  const paid = setup({ payment_status: 'paid' });
+  assert.equal((await paid.requestAdminConfirm()).status, 200);
+  assert.equal(paid.state.appointments[0].status, 'confirmed');
+  assert.equal(paid.state.requests.length, 0);
 });
