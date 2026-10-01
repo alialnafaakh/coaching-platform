@@ -11,14 +11,18 @@ export class WaylError extends Error {
   }
 }
 
-export function requireWaylTestMode(): void {
-  if (process.env.WAYL_ENV !== "test") {
-    throw new WaylError("Test payments are not configured.", 503);
+export type WaylEnvironment = "test" | "live";
+
+export function getWaylEnvironment(): WaylEnvironment {
+  const environment = process.env.WAYL_ENV;
+  if (environment !== "test" && environment !== "live") {
+    throw new WaylError("Payments are not configured.", 503);
   }
+  return environment;
 }
 
 export function getWaylCheckoutConfig() {
-  requireWaylTestMode();
+  const environment = getWaylEnvironment();
   const token = process.env.WAYL_API_TOKEN?.trim();
   const webhookSecret = process.env.WAYL_WEBHOOK_SECRET?.trim();
   const rawRate = process.env.WAYL_USD_TO_IQD_RATE?.trim();
@@ -27,7 +31,7 @@ export function getWaylCheckoutConfig() {
     throw new WaylError("Payment currency conversion is not configured.", 503);
   }
   if (!token || !webhookSecret || webhookSecret.length < 10 || webhookSecret.length > 255) {
-    throw new WaylError("Test payments are not configured.", 503);
+    throw new WaylError("Payments are not configured.", 503);
   }
   let site: URL;
   try {
@@ -40,7 +44,7 @@ export function getWaylCheckoutConfig() {
       ["localhost", "127.0.0.1", "[::1]"].includes(site.hostname)) {
     throw new WaylError("Payment callback URL is not configured.", 503);
   }
-  return { token, webhookSecret, rate, siteOrigin: site.origin };
+  return { token, webhookSecret, rate, siteOrigin: site.origin, environment };
 }
 
 function usdCents(value: unknown): number {
@@ -54,7 +58,7 @@ function usdCents(value: unknown): number {
   return cents;
 }
 
-export function quoteWaylPayment(priceUsd: unknown, rate: number) {
+export function quoteWaylPayment(priceUsd: unknown, rate: number, environment: WaylEnvironment = getWaylEnvironment()) {
   const cents = usdCents(priceUsd);
   const totalIqd = Math.round(cents * rate / 100);
   if (!Number.isFinite(rate) || rate <= 0 || !Number.isSafeInteger(totalIqd) || totalIqd < 1000) {
@@ -62,16 +66,16 @@ export function quoteWaylPayment(priceUsd: unknown, rate: number) {
   }
   // Preserve the charge quote in the existing reference column so webhook
   // validation does not depend on subsequent exchange-rate configuration changes.
-  const referenceId = "wayl_test_" + randomUUID() + "_" + cents + "_" + totalIqd;
+  const referenceId = "wayl_" + environment + "_" + randomUUID() + "_" + cents + "_" + totalIqd;
   return { referenceId, totalIqd };
 }
 
 export function referenceAmount(reference: string, priceUsd: unknown): number {
-  const match = /^wayl_test_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}_(\d+)_(\d+)$/.exec(reference);
-  if (!match || Number(match[1]) !== usdCents(priceUsd)) {
+  const match = /^wayl_(test|live)_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}_(\d+)_(\d+)$/.exec(reference);
+  if (!match || match[1] !== getWaylEnvironment() || Number(match[2]) !== usdCents(priceUsd)) {
     throw new WaylError("Payment reference does not match booking pricing.", 409);
   }
-  const amount = Number(match[2]);
+  const amount = Number(match[3]);
   if (!Number.isSafeInteger(amount) || amount < 1000) {
     throw new WaylError("Payment reference is invalid.", 409);
   }
@@ -123,7 +127,7 @@ export async function createPaymentLink(input: {
       redirect: "error",
       signal: AbortSignal.timeout(15000),
       body: JSON.stringify({
-        env: "test",
+        env: config.environment,
         referenceId: input.referenceId,
         total: input.totalIqd,
         currency: "IQD",
@@ -152,7 +156,7 @@ export async function createPaymentLink(input: {
   } catch {
     console.warn(diagnostic);
     // Never forward upstream messages, response bodies, tokens or callback URLs.
-    throw new WaylError("Unable to prepare test checkout. Please contact support before retrying.");
+    throw new WaylError("Unable to prepare checkout. Please contact support before retrying.");
   }
 }
 
@@ -175,9 +179,9 @@ export function validateWaylPayment(payload: Record<string, unknown>, expectedIq
       (typeof total === "string" && !/^\d+(?:\.0+)?$/.test(total)) ||
       Number(total) !== expectedIqd) return false;
   // The documented webhook includes total but not currency/env. Validate those
-  // when supplied; IQD/test are pinned in our stored reference and request.
+  // when supplied; IQD and the environment are pinned in our stored reference and request.
   if (payload.currency !== undefined && payload.currency !== "IQD") return false;
-  if (payload.env !== undefined && payload.env !== "test") return false;
+  if (payload.env !== undefined && payload.env !== getWaylEnvironment()) return false;
   if (payload.status !== undefined && payload.paymentStatus !== undefined &&
       !["Complete", "Delivered", "Paid"].includes(String(payload.status))) return false;
   return true;

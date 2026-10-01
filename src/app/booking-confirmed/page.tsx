@@ -210,7 +210,7 @@ function BookingConfirmedContent() {
                     {t("payment_required")}
                   </p>
                   <p className={`text-sm text-[#6b7280] leading-relaxed ${isRtl ? "font-arabic" : ""}`}>
-                    {lang === "ar" ? "أكملي الدفع التجريبي. يبقى الموعد بانتظار تأكيد الدفع الآمن." : "Complete test checkout. Your appointment remains pending until payment is verified."}
+                    {lang === "ar" ? "أكملي الدفع. يبقى الموعد بانتظار تأكيد الدفع الآمن." : "Complete checkout. Your appointment remains pending until payment is verified."}
                   </p>
                   {searchParams.get("payment") === "unavailable" && (
                     <p className="mt-3 text-sm text-amber-800">
@@ -219,7 +219,7 @@ function BookingConfirmedContent() {
                   )}
                   <button type="button" onClick={requestCheckout} disabled={checkoutLoading}
                     className="mt-4 w-full rounded-xl bg-[#0d7377] px-5 py-3 text-sm text-white disabled:opacity-60">
-                    {checkoutLoading ? (lang === "ar" ? "جاري تجهيز الدفع…" : "Preparing checkout…") : lang === "ar" ? "الدفع التجريبي عبر ويل" : "Continue to Wayl test checkout"}
+                    {checkoutLoading ? (lang === "ar" ? "جاري تجهيز الدفع…" : "Preparing checkout…") : lang === "ar" ? "الدفع عبر ويل" : "Continue to Wayl checkout"}
                   </button>
                   {checkoutError && <p role="alert" className="mt-3 text-sm text-red-600">{checkoutError}</p>}
                 </div>

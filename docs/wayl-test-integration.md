@@ -1,18 +1,37 @@
-# Wayl test integration
+# Wayl payment integration
 
 This implementation uses the [official create-link schema](https://api.thewayl.com/openapi.v1.json)
-and [webhook guide](https://wayl.io/docs). It refuses any environment other than `WAYL_ENV=test`.
+and [webhook guide](https://wayl.io/docs). It accepts only explicitly configured `WAYL_ENV=test` or `WAYL_ENV=live`;
+missing or unsupported values fail closed.
 
 Configure these server variables manually; keep all secret values out of source control:
 
 - `WAYL_API_TOKEN`: merchant token sent only from the server.
 - `WAYL_WEBHOOK_SECRET`: the same 10–255 character secret used for signing webhook bodies.
-- `WAYL_ENV`: must be `test`.
+- `WAYL_ENV`: `live` for production payments, or `test` for isolated testing. No default.
 - `WAYL_USD_TO_IQD_RATE`: a positive decimal conversion rate selected by the merchant. No default is supplied.
-- `WAYL_CALLBACK_ORIGIN`: server-only public HTTPS origin of the **test deployment**, where the callback can reach `/api/payments/webhook`. Leading/trailing whitespace is trimmed; paths, query strings, fragments, credentials and localhost are rejected. This origin also supplies the browser return URL. There is no fallback to `NEXT_PUBLIC_APP_URL` or `NEXT_PUBLIC_SITE_URL`.
+- `WAYL_CALLBACK_ORIGIN`: server-only public HTTPS origin of the **selected deployment**, where the callback can reach `/api/payments/webhook`. Leading/trailing whitespace is trimmed; paths, query strings, fragments, credentials and localhost are rejected. This origin also supplies the browser return URL. There is no fallback to `NEXT_PUBLIC_APP_URL` or `NEXT_PUBLIC_SITE_URL`.
 
-Do not point test callbacks at a production deployment/database. Existing NextAuth,
-Supabase, Daily and Resend configuration is unchanged.
+Keep test and live deployments/credentials isolated. Existing NextAuth, Supabase,
+Daily and Resend configuration is unchanged.
+
+## Vercel production configuration
+
+- Change `WAYL_ENV` from `test` to `live`.
+- Bind `WAYL_API_TOKEN` to the merchant credential authorized for live link creation.
+  If the existing merchant token supports both modes, it need not be replaced.
+- Configure `WAYL_WEBHOOK_SECRET` for the live integration; use the same secret for
+  link creation and webhook verification. Its value is never published or logged.
+- Verify `WAYL_USD_TO_IQD_RATE` is the merchant's intended positive production rate.
+- Keep `WAYL_CALLBACK_ORIGIN=https://biopsychosocial.site`. The webhook stays at
+  `/api/payments/webhook`, and the browser return remains `/booking-confirmed`.
+
+The API base and authentication header remain `https://api.thewayl.com/api/v1`
+and `X-WAYL-AUTHENTICATION`; no separate endpoint or new secret variable is introduced.
+Existing TEST references remain stored but cannot be reused or confirmed in LIVE mode.
+Finish or reconcile outstanding test holds before switching modes. Never clear their
+references or convert them to live references. No new migration is required for mode
+support; checkout recovery still requires its existing URL/expiry migration.
 
 ## Booking and checkout
 
@@ -26,20 +45,21 @@ Wayl's minimum total of 1000 IQD is enforced. Missing/invalid configuration fail
 before reference mutation or a Wayl request.
 
 An atomic conditional update claims one unique reference per appointment. The reference
-format is `wayl_test_<random UUID>_<USD cents>_<IQD total>`. Persisting this quote in
+format is `wayl_<test|live>_<random UUID>_<USD cents>_<IQD total>`. Persisting this quote in
 the existing `payment_reference` column avoids a migration and prevents later rate
 changes from invalidating an earlier payment. A webhook must match that exact stored
-reference and the appointment's USD snapshot.
+reference and the appointment's USD snapshot. Its embedded environment must match
+`WAYL_ENV`, including when the webhook omits its optional environment field.
 
 Only Wayl's `data.url` is accepted, with an HTTPS Wayl checkout origin and recognized
-checkout path. No URL is synthesized from a code. Requests use `env=test`, `lineItem`,
+checkout path. No URL is synthesized from a code. Requests use the configured `WAYL_ENV`, `lineItem`,
 IQD, the signed webhook callback, and a return URL containing appointment ID and token.
 The link expiry is rounded down to the remaining whole minutes of the booking hold.
 
 Duplicate/concurrent checkout attempts cannot issue another link. A validated successful
 checkout URL and conservative expiry are saved before the response. Authorized retries
 reuse that URL only while the unpaid hold and link are valid, the provider/reference
-match, and TEST mode remains enabled. On an API error,
+match, and the reference environment matches the configured mode. On an API error,
 timeout, or invalid response, the reference stays attached because Wayl may already
 have created the link. Contact support for reconciliation instead of clearing the
 reference and risking a second charge. The hold retains its original expiry.
@@ -72,7 +92,7 @@ exposes the paid/cancelled state. A human must reconcile the payment/refund and 
 the integration does not initiate refunds. An invalid hold timestamp fails for review.
 
 The form creates the existing temporary hold in the background and immediately redirects
-into TEST checkout. Before verified payment, the UI displays only payment/setup states,
+into Wayl checkout. Before verified payment, the UI displays only payment/setup states,
 never booking success. Checkout failure returns to the existing access link with a
 payment setup error, preserving the hold without claiming confirmation.
 
@@ -93,7 +113,7 @@ Run `node --test tests/wayl.test.cjs`, `node node_modules/typescript/bin/tsc --n
 and `npm run build`. Tests use synthetic configuration and in-memory mocks, never
 load `.env.local`, and cannot contact Wayl, Supabase or Resend. Mock rates are fixture
 values only; they do not configure the application. Real checkout remains blocked
-until the merchant supplies a valid exchange rate and a test callback origin.
+until the merchant supplies a valid exchange rate and a public HTTPS callback origin.
 
 The public Wayl documentation does not specify a complete webhook schema or its
 paymentStatus enum. A real signed TEST fixture should be checked against the strict

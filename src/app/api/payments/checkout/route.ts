@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { tokensMatch } from "@/lib/bookings";
-import { createPaymentLink, getWaylCheckoutConfig, quoteWaylPayment, referenceAmount, requireWaylTestMode, validWaylCheckoutUrl, WaylError } from "@/lib/wayl";
+import { createPaymentLink, getWaylCheckoutConfig, quoteWaylPayment, referenceAmount, getWaylEnvironment, validWaylCheckoutUrl, WaylError } from "@/lib/wayl";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return failure("This booking is no longer available for checkout.", 409);
     }
     if (appointment.payment_reference) {
-      requireWaylTestMode();
+      getWaylEnvironment();
       const checkoutExpiry = Date.parse(appointment.payment_checkout_expires_at || "");
       if (appointment.payment_provider === "wayl" &&
           validWaylCheckoutUrl(appointment.payment_checkout_url) &&
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
     // Validate configuration and pricing before reference mutation or API requests.
     const config = getWaylCheckoutConfig();
-    const quote = quoteWaylPayment(appointment.final_price_usd, config.rate);
+    const quote = quoteWaylPayment(appointment.final_price_usd, config.rate, config.environment);
     const { data: claimed, error: claimError } = await db.from("appointments")
       .update({ payment_provider: "wayl", payment_reference: quote.referenceId })
       .eq("id", id).eq("join_token", appointment.join_token)

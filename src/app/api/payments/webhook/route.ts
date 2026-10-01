@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { expireExpiredHolds } from "@/lib/bookings";
-import { isWaylPaid, referenceAmount, requireWaylTestMode, validateWaylPayment, verifyWaylSignature } from "@/lib/wayl";
+import { isWaylPaid, referenceAmount, getWaylEnvironment, validateWaylPayment, verifyWaylSignature } from "@/lib/wayl";
 import { notifyConsultationConfirmed } from "@/lib/consultationEmail";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     if (!verifyWaylSignature(rawBody, req.headers.get("x-wayl-signature-256"))) {
       return failure("Invalid signature.", 400);
     }
-    requireWaylTestMode();
+    getWaylEnvironment();
     let payload: Record<string, unknown>;
     try {
       payload = JSON.parse(Buffer.from(rawBody).toString("utf8"));

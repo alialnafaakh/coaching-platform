@@ -46,7 +46,7 @@ function setup(overrides = {}, envOverrides = {}) {
       return { data };
     } };
   }, { warn: code => state.diagnostics.push(code) });
-  const quote = wayl.quoteWaylPayment(50, 100); // Synthetic fixture rate, never local configuration.
+  const quote = wayl.quoteWaylPayment(50, 100, env.WAYL_ENV === 'live' ? 'live' : 'test'); // Synthetic fixture rate, never local configuration.
   state.appointments = [{
     id: '11111111-1111-4111-8111-111111111111', slot_id: 'slot-1', join_token: 'synthetic-join',
     status: 'pending_payment', payment_status: 'unpaid', final_price_usd: 50,
@@ -162,9 +162,9 @@ test('checkout uses the existing snapshot/hold, official TEST body and returned 
   assert.deepEqual(s.state.time_slots, [{ id: 'slot-1', is_booked: true }]);
 });
 
-test('invalid/missing rate and live mode fail before mutation or network', async () => {
+test('invalid/missing rate and unsupported mode fail before mutation or network', async () => {
   for (const settings of [{ WAYL_USD_TO_IQD_RATE: undefined }, { WAYL_USD_TO_IQD_RATE: 'bad' },
-    { WAYL_USD_TO_IQD_RATE: '0' }, { WAYL_USD_TO_IQD_RATE: '-1' }, { WAYL_ENV: 'live' }]) {
+    { WAYL_USD_TO_IQD_RATE: '0' }, { WAYL_USD_TO_IQD_RATE: '-1' }, { WAYL_ENV: 'sandbox' }, { WAYL_ENV: undefined }]) {
     const s = setup({ payment_reference: null }, settings);
     assert.equal((await s.requestCheckout()).status, 503);
     assert.equal(s.state.requests.length, 0); assert.equal(s.state.writes.length, 0);
@@ -447,7 +447,7 @@ test('lost checkout response is recoverable using persisted URL without creating
   assert.ok(s.state.diagnostics.every(code => /^[A-Z_]+$/.test(code)));
 });
 
-test('reuse rejects invalid, expired, mismatched and non-TEST checkout state without another request', async () => {
+test('reuse rejects invalid, expired, mismatched and cross-environment checkout state without another request', async () => {
   for (const patch of [{ payment_checkout_url: 'https://evil.test/pay/x' },
     { payment_checkout_expires_at: new Date(0).toISOString() },
     { payment_checkout_expires_at: new Date(Date.now() + 1800000).toISOString() },
@@ -461,7 +461,7 @@ test('reuse rejects invalid, expired, mismatched and non-TEST checkout state wit
   const s = setup({ payment_reference: null });
   assert.equal((await s.requestCheckout()).status, 200);
   s.env.WAYL_ENV = 'live';
-  assert.equal((await s.requestCheckout()).status, 503);
+  assert.equal((await s.requestCheckout()).status, 409);
   assert.equal(s.state.requests.length, 1);
 });
 
@@ -487,4 +487,29 @@ test('first-request diagnostics distinguish request, HTTP, JSON and validation f
     assert.equal((await s.requestCheckout()).status, 409);
     assert.equal(s.state.requests.length, 1);
   }
+});
+
+
+test('LIVE checkout, recovery, webhook confirmation and email use configured environment without external access', async () => {
+  const s = setup({ payment_reference: null }, { WAYL_ENV: 'live' });
+  assert.equal((await s.requestCheckout()).status, 200);
+  assert.equal(s.state.requests[0].body.env, 'live');
+  assert.match(s.state.appointments[0].payment_reference, /^wayl_live_/);
+  assert.equal((await s.requestCheckout()).status, 200);
+  assert.equal(s.state.requests.length, 1);
+  assert.equal((await s.event({ env: 'test' })).status, 409);
+  assert.equal(s.state.appointments[0].payment_status, 'unpaid');
+  assert.equal((await s.event({ env: 'live' })).status, 200);
+  assert.equal(s.state.appointments[0].status, 'confirmed');
+  assert.equal(s.state.appointments[0].payment_status, 'paid');
+  assert.equal(s.state.emailAttempts, 1);
+  assert.equal((await s.event({ env: 'live' })).status, 200);
+  assert.equal(s.state.emailAttempts, 1);
+});
+
+test('LIVE webhook cannot confirm an old TEST reference even when event omits environment', async () => {
+  const s = setup(); s.env.WAYL_ENV = 'live';
+  assert.equal((await s.event()).status, 409);
+  assert.equal(s.state.writes.length, 0);
+  assert.equal(s.state.emails.size, 0);
 });
