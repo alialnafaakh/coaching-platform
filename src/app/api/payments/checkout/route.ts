@@ -11,6 +11,7 @@ function failure(message: string, status: number) {
 }
 
 export async function POST(req: NextRequest) {
+  let conflictDiagnostic: "CHECKOUT_INVALID_PRICE" | "CHECKOUT_HOLD_INVALID" = "CHECKOUT_INVALID_PRICE";
   try {
     const body = await req.json().catch(() => null);
     const id = body?.appointment_id;
@@ -30,9 +31,11 @@ export async function POST(req: NextRequest) {
     const expiry = Date.parse(appointment.payment_expires_at || "");
     if (appointment.status !== "pending_payment" || appointment.payment_status !== "unpaid" ||
         !Number.isFinite(expiry) || expiry - Date.now() < 60000) {
+      console.warn("CHECKOUT_INVALID_STATE");
       return failure("This booking is no longer available for checkout.", 409);
     }
     if (appointment.payment_reference) {
+      console.warn("CHECKOUT_ALREADY_REQUESTED");
       return failure("Checkout has already been requested. Contact support if you cannot complete it.", 409);
     }
     // Validate configuration and pricing before reference mutation or API requests.
@@ -46,15 +49,22 @@ export async function POST(req: NextRequest) {
       .gt("payment_expires_at", new Date(Date.now() + 60000).toISOString())
       .is("payment_reference", null).select("id").maybeSingle();
     if (claimError) return failure("Unable to prepare checkout.", 503);
-    if (!claimed) return failure("Checkout is already requested or the hold has ended.", 409);
+    if (!claimed) {
+      console.warn("CHECKOUT_CLAIM_CONFLICT");
+      return failure("Checkout is already requested or the hold has ended.", 409);
+    }
     // Retain the reference on errors/timeouts: Wayl may have accepted the request.
     // Never erase a possible charge or issue a second link for this appointment.
+    conflictDiagnostic = "CHECKOUT_HOLD_INVALID";
     const url = await createPaymentLink({
       ...quote, appointmentId: id, joinToken: appointment.join_token,
       expiresAt: appointment.payment_expires_at,
     });
     return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof WaylError && error.status === 409) {
+      console.warn(conflictDiagnostic);
+    }
     return error instanceof WaylError ? failure(error.message, error.status) :
       failure("Unable to prepare checkout.", 503);
   }

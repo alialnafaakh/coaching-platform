@@ -13,7 +13,7 @@ function load(file, imports, env, fetch) {
   }).outputText;
   vm.runInNewContext(js, {
     exports, process: { env }, Buffer, URL, Uint8Array, AbortSignal, Date,
-    console: { error() {} },
+    console: { error() {}, warn() {} },
     fetch: fetch || (() => { throw new Error('Network forbidden'); }),
     require(name) {
       if (name === 'crypto') return crypto;
