@@ -77,8 +77,12 @@ The browser return only reads/polls booking state; URL parameters are never proo
 payment. A pending return shows “Verifying payment” and does not offer another checkout.
 Confirmation and consultation links require both a paid database state and a confirmed
 (or later active/completed) lifecycle state. Transient status-read failures are retried;
-polling stops at paid confirmation or cancellation. Admin confirmation also requires an
-already-paid appointment, so it cannot bypass payment verification.
+polling stops at paid confirmation or cancellation. No manual consultant approval is required: the verified webhook confirms the
+appointment and invokes the existing invitation email immediately. The obsolete admin
+confirmation action is disabled; session start/end and email resend remain available.
+Email delivery errors do not undo payment or confirmation. The existing atomic email
+claim prevents concurrent/repeated webhook deliveries from sending duplicate invitations;
+failed email attempts release the claim so later webhook retries can try again.
 
 ## Validation without payment requests
 

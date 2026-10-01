@@ -38,7 +38,6 @@ export default function AppointmentTable() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{
     id: string;
@@ -65,52 +64,6 @@ export default function AppointmentTable() {
     await fetch(`/api/appointments?id=${id}`, { method: "PATCH" });
     setCancelling(null);
     fetchAppts();
-  };
-
-  const handleConfirm = async (id: string) => {
-    if (!confirm("Confirm this appointment and email the consultation link to the customer?")) {
-      return;
-    }
-    setConfirming(id);
-    setActionMessage(null);
-    try {
-      const res = await fetch(`/api/appointments/${encodeURIComponent(id)}/confirm`, {
-        method: "POST",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setActionMessage({
-          id,
-          tone: "err",
-          text: typeof data.error === "string" ? data.error : "Unable to confirm appointment.",
-        });
-      } else if (data.consultation_email_last_error) {
-        setActionMessage({
-          id,
-          tone: "err",
-          text: `Confirmed, but email failed: ${data.consultation_email_last_error}`,
-        });
-      } else if (data.alreadyConfirmed) {
-        setActionMessage({
-          id,
-          tone: "ok",
-          text: "Already confirmed. Use Resend if the customer needs the link again.",
-        });
-      } else {
-        setActionMessage({
-          id,
-          tone: "ok",
-          text: data.consultation_email_sent_at
-            ? "Confirmed. Consultation link emailed to the customer."
-            : "Confirmed. Email status pending — use Resend if needed.",
-        });
-      }
-    } catch {
-      setActionMessage({ id, tone: "err", text: "Unable to confirm appointment." });
-    } finally {
-      setConfirming(null);
-      fetchAppts();
-    }
   };
 
   const handleResend = async (id: string) => {
@@ -155,7 +108,7 @@ export default function AppointmentTable() {
         Appointments
       </h1>
       <p className="text-sm text-[#6b7280] mb-8">
-        All client bookings. Confirm pending payments to email the secure consultation link.
+        Verified payment automatically confirms bookings and emails the secure consultation link.
       </p>
 
       {loading ? (
@@ -258,17 +211,6 @@ export default function AppointmentTable() {
                 <span className="px-2.5 py-1 rounded-full text-xs font-medium border bg-[#faf9f6] text-[#6b7280] border-[#e5e0d8]">
                   {consultationLabel(appt.status)}
                 </span>
-
-                {appt.status === "pending_payment" && (
-                  <button
-                    onClick={() => handleConfirm(appt.id)}
-                    disabled={confirming === appt.id}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
-                  >
-                    {confirming === appt.id ? "…" : "Confirm & email link"}
-                  </button>
-                )}
 
                 {(appt.status === "confirmed" || appt.status === "in_progress") && (
                   <button

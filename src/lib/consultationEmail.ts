@@ -7,6 +7,7 @@ type EmailLang = "en" | "ar";
 type AppointmentEmailRow = {
   id: string;
   status: string;
+  payment_status: string;
   client_name: string;
   client_email: string;
   join_token: string;
@@ -214,7 +215,7 @@ async function loadAppointmentForEmail(
   const { data, error } = await db
     .from("appointments")
     .select(
-      "id, status, client_name, client_email, join_token, session_duration_minutes, final_price_usd, consultation_email_sent_at, consultation_email_last_error, time_slots(date, start_time, end_time)"
+      "id, status, payment_status, client_name, client_email, join_token, session_duration_minutes, final_price_usd, consultation_email_sent_at, consultation_email_last_error, time_slots(date, start_time, end_time)"
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -238,10 +239,11 @@ export async function sendConsultationInvitationEmail(
     return { ok: false, error: "Appointment not found." };
   }
 
-  if (appt.status !== "confirmed" && appt.status !== "in_progress") {
+  if (appt.payment_status !== "paid" ||
+      (appt.status !== "confirmed" && appt.status !== "in_progress")) {
     return {
       ok: false,
-      error: "Consultation email is only sent for confirmed appointments.",
+      error: "Consultation email is only sent for paid, confirmed appointments.",
       skipped: true,
     };
   }
@@ -270,6 +272,7 @@ export async function sendConsultationInvitationEmail(
       .eq("id", appointmentId)
       .is("consultation_email_sent_at", null)
       .in("status", ["confirmed", "in_progress"])
+      .eq("payment_status", "paid")
       .select("id")
       .maybeSingle();
 

@@ -13,6 +13,7 @@ function load(file, imports, env, fetch) {
   }).outputText;
   vm.runInNewContext(js, {
     exports, process: { env }, Buffer, URL, Uint8Array, AbortSignal, Date,
+    console: { error() {} },
     fetch: fetch || (() => { throw new Error('Network forbidden'); }),
     require(name) {
       if (name === 'crypto') return crypto;
@@ -28,7 +29,9 @@ function setup(overrides = {}, envOverrides = {}) {
   const env = {
     WAYL_ENV: 'test', WAYL_API_TOKEN: 'synthetic-token',
     WAYL_WEBHOOK_SECRET: 'synthetic-test-secret', WAYL_USD_TO_IQD_RATE: '100',
-    WAYL_CALLBACK_ORIGIN: 'https://example.test', ...envOverrides,
+    WAYL_CALLBACK_ORIGIN: 'https://example.test',
+    NEXT_PUBLIC_SITE_URL: 'https://example.test', RESEND_API_KEY: 'synthetic-email-key',
+    EMAIL_FROM: 'coach@example.test', EMAIL_REPLY_TO: 'coach@example.test', ...envOverrides,
   };
   const state = { requests: [], writes: [], reads: 0, emails: new Set(), reply: 'valid' };
   const wayl = load('src/lib/wayl.ts', {}, env, async (url, options) => {
@@ -44,6 +47,9 @@ function setup(overrides = {}, envOverrides = {}) {
   state.appointments = [{
     id: '11111111-1111-4111-8111-111111111111', slot_id: 'slot-1', join_token: 'synthetic-join',
     status: 'pending_payment', payment_status: 'unpaid', final_price_usd: 50,
+    client_name: 'Test Customer', client_email: 'customer@example.test',
+    consultation_email_sent_at: null, consultation_email_last_error: null,
+    time_slots: { date: '2026-10-02', start_time: '12:00:00', end_time: '12:40:00' },
     base_price_usd: 100, discount_percent: 50, session_duration_minutes: 40,
     payment_expires_at: new Date(Date.now() + 900000).toISOString(),
     payment_reference: quote.referenceId, payment_provider: 'wayl', ...overrides,
@@ -79,12 +85,26 @@ function setup(overrides = {}, envOverrides = {}) {
     return q;
   } };
   const bookings = load('src/lib/bookings.ts', {}, env);
+  const email = load('src/lib/consultationEmail.ts', {
+    resend: { Resend: class {
+      emails = { send: async message => {
+        assert.equal(state.appointments[0].payment_status, 'paid');
+        assert.equal(state.appointments[0].status, 'confirmed');
+        state.emailAttempts = (state.emailAttempts || 0) + 1;
+        if (state.emailFailure) return { error: { message: 'synthetic send failure' } };
+        state.emails.add(message.to);
+        state.emailMessages = [...(state.emailMessages || []), message];
+        return { error: null };
+      } };
+    } },
+    '@/lib/consultationAccess': { resolveSessionDurationMinutes: appt => appt.session_duration_minutes },
+  }, env);
   const imports = {
     'next/server': { NextResponse: Response }, '@/lib/wayl': wayl,
     'next-auth': { async getServerSession() { return { role: 'admin' }; } },
     '@/lib/auth': { authOptions: {} },
     '@/lib/bookings': bookings, '@/lib/supabase': { getSupabaseAdmin() { state.dbCalls = (state.dbCalls || 0) + 1; return db; } },
-    '@/lib/consultationEmail': { async notifyConsultationConfirmed(_db, id) { state.emails.add(id); } },
+    '@/lib/consultationEmail': email,
   };
   const checkout = load('src/app/api/payments/checkout/route.ts', imports, env).POST;
   const webhook = load('src/app/api/payments/webhook/route.ts', imports, env).POST;
@@ -98,7 +118,7 @@ function setup(overrides = {}, envOverrides = {}) {
   };
   const adminConfirm = load('src/app/api/appointments/[id]/confirm/route.ts', imports, env).POST;
   const requestAdminConfirm = () => adminConfirm(new Request('https://example.test'), { params: Promise.resolve({ id: state.appointments[0].id }) });
-  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm };
+  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm, email };
 }
 
 test('checkout uses the existing snapshot/hold, official TEST body and returned URL', async () => {
@@ -196,6 +216,8 @@ test('only exact signature header and raw bytes authenticate; invalid signatures
     ['x-wayl-signature-256', 'zz'.repeat(32)]]) {
     const s = setup(); assert.equal((await s.event({}, header, sig)).status, 400);
     assert.equal(s.state.dbCalls || 0, 0); assert.equal(s.state.writes.length, 0);
+    assert.equal(s.state.emails.size, 0);
+    assert.equal(s.state.appointments[0].status, 'pending_payment');
   }
   const s = setup();
   const bytes = Buffer.from('{ "a": 1 }');
@@ -219,8 +241,10 @@ test('successful payment preserves identity, token, slot and pricing; concurrent
   assert.ok(responses.every(r => r.status === 200));
   assert.equal(s.state.appointments[0].payment_status, 'paid');
   assert.equal(s.state.appointments[0].status, 'confirmed');
-  assert.equal(s.state.writes.filter(w => w.table === 'appointments').length, 1);
-  for (const k of Object.keys(before).filter(k => !['status', 'payment_status'].includes(k))) {
+  assert.equal(s.state.emailAttempts, 1);
+  assert.equal(s.state.emails.size, 1);
+  assert.equal(s.state.writes.filter(w => w.patch.payment_status === 'paid').length, 1);
+  for (const k of Object.keys(before).filter(k => !['status', 'payment_status', 'consultation_email_sent_at', 'consultation_email_last_error'].includes(k))) {
     assert.equal(s.state.appointments[0][k], before[k]);
   }
   assert.equal((await s.event({ paymentStatus: 'Rejected' })).status, 200);
@@ -290,14 +314,52 @@ test('booking success requires paid database state; pending and cancelled paymen
 });
 
 
-test('admin confirmation cannot bypass payment verification', async () => {
-  const unpaid = setup();
-  assert.equal((await unpaid.requestAdminConfirm()).status, 409);
-  assert.equal(unpaid.state.appointments[0].status, 'pending_payment');
-  assert.equal(unpaid.state.writes.length, 0);
-  assert.equal(unpaid.state.emails.size, 0);
-  const paid = setup({ payment_status: 'paid' });
-  assert.equal((await paid.requestAdminConfirm()).status, 200);
-  assert.equal(paid.state.appointments[0].status, 'confirmed');
-  assert.equal(paid.state.requests.length, 0);
+test('manual approval is disabled even for a paid booking', async () => {
+  for (const payment_status of ['unpaid', 'paid']) {
+    const s = setup({ payment_status });
+    assert.equal((await s.requestAdminConfirm()).status, 410);
+    assert.equal(s.state.writes.length, 0);
+    assert.equal(s.state.emails.size, 0);
+  }
+});
+
+test('verified payment sends the existing invitation after confirmation exactly once across retries', async () => {
+  const s = setup();
+  assert.equal((await s.event()).status, 200);
+  assert.equal(s.state.appointments[0].status, 'confirmed');
+  assert.equal(s.state.emails.size, 1);
+  assert.equal(s.state.emailAttempts, 1);
+  assert.ok(s.state.emailMessages[0].text.includes('synthetic-join'));
+  assert.ok(s.state.appointments[0].consultation_email_sent_at);
+  assert.equal((await s.event()).status, 200);
+  assert.equal(s.state.emailAttempts, 1);
+});
+
+test('email failure preserves paid confirmation and allows a deduplicated retry', async () => {
+  const s = setup(); s.state.emailFailure = true;
+  assert.equal((await s.event()).status, 200);
+  assert.equal(s.state.appointments[0].status, 'confirmed');
+  assert.equal(s.state.appointments[0].payment_status, 'paid');
+  assert.equal(s.state.appointments[0].consultation_email_sent_at, null);
+  assert.ok(s.state.appointments[0].consultation_email_last_error);
+  s.state.emailFailure = false;
+  assert.equal((await s.event()).status, 200);
+  assert.equal(s.state.emails.size, 1);
+  assert.equal(s.state.emailAttempts, 2);
+  assert.equal((await s.event()).status, 200);
+  assert.equal(s.state.emailAttempts, 2);
+});
+
+test('failed payments cannot confirm or email; unpaid admin resend is rejected', async () => {
+  for (const paymentStatus of ['Rejected', 'Pending', 'Cancelled']) {
+    const s = setup();
+    assert.equal((await s.event({ paymentStatus })).status, 200);
+    assert.equal(s.state.appointments[0].status, 'pending_payment');
+    assert.equal(s.state.appointments[0].payment_status, 'unpaid');
+    assert.equal(s.state.emails.size, 0);
+  }
+  const s = setup({ status: 'confirmed', payment_status: 'unpaid' });
+  assert.equal((await s.email.sendConsultationInvitationEmail(s.db, s.state.appointments[0].id, { force: true })).ok, false);
+  assert.equal(s.state.emails.size, 0);
+  assert.equal(s.state.writes.length, 0);
 });
