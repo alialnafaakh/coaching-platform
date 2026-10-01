@@ -9,7 +9,7 @@ Configure these server variables manually; keep all secret values out of source 
 - `WAYL_WEBHOOK_SECRET`: the same 10–255 character secret used for signing webhook bodies.
 - `WAYL_ENV`: must be `test`.
 - `WAYL_USD_TO_IQD_RATE`: a positive decimal conversion rate selected by the merchant. No default is supplied.
-- `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_SITE_URL`): the public HTTPS origin of the **test deployment**, where the callback can reach this webhook. No localhost fallback is supplied.
+- `WAYL_CALLBACK_ORIGIN`: server-only public HTTPS origin of the **test deployment**, where the callback can reach `/api/payments/webhook`. Leading/trailing whitespace is trimmed; paths, query strings, fragments, credentials and localhost are rejected. This origin also supplies the browser return URL. There is no fallback to `NEXT_PUBLIC_APP_URL` or `NEXT_PUBLIC_SITE_URL`.
 
 Do not point test callbacks at a production deployment/database. Existing NextAuth,
 Supabase, Daily and Resend configuration is unchanged.

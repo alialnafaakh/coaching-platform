@@ -31,7 +31,7 @@ export function getWaylCheckoutConfig() {
   }
   let site: URL;
   try {
-    site = new URL(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "");
+    site = new URL(process.env.WAYL_CALLBACK_ORIGIN?.trim() || "");
   } catch {
     throw new WaylError("Payment callback URL is not configured.", 503);
   }

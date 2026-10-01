@@ -28,7 +28,7 @@ function setup(overrides = {}, envOverrides = {}) {
   const env = {
     WAYL_ENV: 'test', WAYL_API_TOKEN: 'synthetic-token',
     WAYL_WEBHOOK_SECRET: 'synthetic-test-secret', WAYL_USD_TO_IQD_RATE: '100',
-    NEXT_PUBLIC_APP_URL: 'https://example.test', ...envOverrides,
+    WAYL_CALLBACK_ORIGIN: 'https://example.test', ...envOverrides,
   };
   const state = { requests: [], writes: [], reads: 0, emails: new Set(), reply: 'valid' };
   const wayl = load('src/lib/wayl.ts', {}, env, async (url, options) => {
@@ -125,6 +125,36 @@ test('invalid/missing rate and live mode fail before mutation or network', async
     const s = setup({ payment_reference: null }, settings);
     assert.equal((await s.requestCheckout()).status, 503);
     assert.equal(s.state.requests.length, 0); assert.equal(s.state.writes.length, 0);
+  }
+});
+
+test('callback origin is trimmed and used for webhook and browser return', async () => {
+  const s = setup({ payment_reference: null }, {
+    WAYL_CALLBACK_ORIGIN: '  https://callback.example.test \n',
+    NEXT_PUBLIC_APP_URL: 'https://ignored.example.test',
+  });
+  assert.equal((await s.requestCheckout()).status, 200);
+  const { body } = s.state.requests[0];
+  assert.equal(body.webhookUrl, 'https://callback.example.test/api/payments/webhook');
+  assert.equal(new URL(body.redirectionUrl).origin, 'https://callback.example.test');
+  assert.equal(body.env, 'test');
+});
+
+test('missing or invalid callback origin fails without public URL fallback, mutation or network', async () => {
+  for (const origin of [undefined, '', '   ', 'not-a-url', 'http://example.test',
+    'https://localhost', 'https://127.0.0.1', 'https://[::1]',
+    'https://user:pass@example.test', 'https://example.test/path',
+    'https://example.test/?query=1', 'https://example.test/#fragment']) {
+    const s = setup({ payment_reference: null }, {
+      WAYL_CALLBACK_ORIGIN: origin,
+      NEXT_PUBLIC_APP_URL: 'https://example.test',
+      NEXT_PUBLIC_SITE_URL: 'https://example.test',
+    });
+    const response = await s.requestCheckout();
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).message, 'Payment callback URL is not configured.');
+    assert.equal(s.state.requests.length, 0);
+    assert.equal(s.state.writes.length, 0);
   }
 });
 
