@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useLanguage } from "@/context/LanguageContext";
@@ -48,12 +49,15 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
             isRtl ? "flex-row-reverse" : ""
           }`}
         >
-          <span
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #0d7377, #d4a843)" }}
-          >
-            {siteName.charAt(0)}
-          </span>
+          <Image
+            src="/brand/maryem-logo.webp"
+            alt=""
+            width={40}
+            height={40}
+            sizes="40px"
+            priority
+            className="w-10 h-10 object-contain rounded-full flex-shrink-0"
+          />
           <span
             className={`font-display text-xl text-[#1a1a2e] tracking-wide truncate ${isRtl ? "font-arabic-display" : ""}`}
             style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
