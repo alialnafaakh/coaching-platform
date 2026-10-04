@@ -158,6 +158,20 @@ export default function Footer({ siteName }: { siteName?: string }) {
             {isRtl ? "السياسات" : "Policies"}
           </Link>
         </div>
+        <p
+          dir="ltr"
+          className="mt-6 pt-5 border-t border-white/10 text-center text-xs leading-relaxed text-white/50"
+        >
+          Designed &amp; Developed by Ali Muhannad ·{" "}
+          <a
+            href="https://t.me/Slow_fast"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#d4a843]/80 hover:text-[#d4a843] underline underline-offset-4 transition-colors"
+          >
+            Telegram
+          </a>
+        </p>
       </div>
     </footer>
   );
