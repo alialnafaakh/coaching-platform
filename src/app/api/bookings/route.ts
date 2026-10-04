@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { newJoinToken, toPublicAppointment, validateCustomer } from "@/lib/bookings";
-import { getWaylCheckoutConfig, quoteWaylPayment } from "@/lib/wayl";
+import { getWaylCheckoutConfig, quoteWaylPayment, WaylError } from "@/lib/wayl";
 import { calculateFinalPrice, getConsultationSettings } from "@/lib/consultationSettings";
 import { enforceBookingIpRateLimit, getClientIpFromRequest } from "@/lib/rateLimit";
 import { boundedJson, PRIVATE_HEADERS } from "@/lib/serverSecurity";
@@ -30,24 +30,29 @@ export async function POST(req: NextRequest) {
   if (limit.action === "skip" && (limit.reason !== "missing_ip" || process.env.VERCEL_ENV === "production")) {
     return failure("temporarily_unavailable", "Booking is temporarily unavailable. Please try again later.", 503);
   }
+  let stage = "BOOKING_DATABASE_UNAVAILABLE";
   try {
     const db = getSupabaseAdmin();
+    stage = "BOOKING_PRICING_UNAVAILABLE";
     const settings = await getConsultationSettings(db);
+    stage = "BOOKING_PAYMENT_CONFIGURATION_UNAVAILABLE";
     const config = getWaylCheckoutConfig();
     // Validate minimum charge before holding inventory; never calls Wayl here.
     quoteWaylPayment(calculateFinalPrice(settings.base_price_usd, settings.discount_percent), config.rate, config.environment);
     const token = newJoinToken();
+    stage = "BOOKING_RESERVATION_UNAVAILABLE";
     const { data, error } = await db.rpc("reserve_booking", {
       p_slot_id: body.slot_id, p_date: body.date, p_start_time: body.start_time,
       p_client_name: customer.client_name, p_client_email: customer.client_email,
       p_notes: customer.notes, p_join_token: token, p_expected_settings: settings,
     });
-    if (error) { console.error("SERVER_OPERATION_FAILED"); return failure("server_error", "Unable to reserve this time.", 503); }
+    if (error) { console.error("BOOKING_RESERVATION_UNAVAILABLE"); return failure("BOOKING_RESERVATION_UNAVAILABLE", "Unable to reserve this time.", 503); }
     if (!data?.appointment) return failure(data?.error || "slot_unavailable", "This time or pricing has changed. Please refresh and try again.", 409);
     return NextResponse.json({ appointment: toPublicAppointment(data.appointment as Appointment), token },
       { status: 201, headers: PRIVATE_HEADERS });
-  } catch {
-    console.error("SERVER_OPERATION_FAILED");
-    return failure("server_error", "Booking is temporarily unavailable. Please contact support.", 503);
+  } catch (error) {
+    const code = error instanceof WaylError && error.code ? error.code : stage;
+    console.error(code);
+    return failure(code, "Booking is temporarily unavailable. Please contact support.", 503);
   }
 }

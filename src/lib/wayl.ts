@@ -5,7 +5,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 const WAYL_API_BASE = "https://api.thewayl.com/api/v1";
 
 export class WaylError extends Error {
-  constructor(message: string, public status = 502) {
+  constructor(message: string, public status = 502, public code?: string) {
     super(message);
     this.name = "WaylError";
   }
@@ -16,7 +16,7 @@ export type WaylEnvironment = "test" | "live";
 export function getWaylEnvironment(): WaylEnvironment {
   const environment = process.env.WAYL_ENV;
   if (environment !== "test" && environment !== "live") {
-    throw new WaylError("Payments are not configured.", 503);
+    throw new WaylError("Payments are not configured.", 503, environment ? "WAYL_ENV_INVALID" : "WAYL_ENV_MISSING");
   }
   return environment;
 }
@@ -28,21 +28,21 @@ export function getWaylCheckoutConfig() {
   const rawRate = process.env.WAYL_USD_TO_IQD_RATE?.trim();
   const rate = rawRate && /^\d+(?:\.\d+)?$/.test(rawRate) ? Number(rawRate) : NaN;
   if (!Number.isFinite(rate) || rate <= 0) {
-    throw new WaylError("Payment currency conversion is not configured.", 503);
+    throw new WaylError("Payment currency conversion is not configured.", 503, "WAYL_RATE_INVALID");
   }
   if (!token || !webhookSecret || webhookSecret.length < 10 || webhookSecret.length > 255) {
-    throw new WaylError("Payments are not configured.", 503);
+    throw new WaylError("Payments are not configured.", 503, "WAYL_CREDENTIALS_UNAVAILABLE");
   }
   let site: URL;
   try {
     site = new URL(process.env.WAYL_CALLBACK_ORIGIN?.trim() || "");
   } catch {
-    throw new WaylError("Payment callback URL is not configured.", 503);
+    throw new WaylError("Payment callback URL is not configured.", 503, "WAYL_CALLBACK_INVALID");
   }
   if (site.protocol !== "https:" || site.username || site.password ||
       site.pathname !== "/" || site.search || site.hash ||
       ["localhost", "127.0.0.1", "[::1]"].includes(site.hostname)) {
-    throw new WaylError("Payment callback URL is not configured.", 503);
+    throw new WaylError("Payment callback URL is not configured.", 503, "WAYL_CALLBACK_INVALID");
   }
   return { token, webhookSecret, rate, siteOrigin: site.origin, environment };
 }
@@ -62,7 +62,7 @@ export function quoteWaylPayment(priceUsd: unknown, rate: number, environment: W
   const cents = usdCents(priceUsd);
   const totalIqd = Math.round(cents * rate / 100);
   if (!Number.isFinite(rate) || rate <= 0 || !Number.isSafeInteger(totalIqd) || totalIqd < 1000) {
-    throw new WaylError("Payment currency conversion is not configured.", 503);
+    throw new WaylError("Payment currency conversion is not configured.", 503, "WAYL_QUOTE_INVALID");
   }
   // Preserve the charge quote in the existing reference column so webhook
   // validation does not depend on subsequent exchange-rate configuration changes.

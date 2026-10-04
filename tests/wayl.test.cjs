@@ -592,3 +592,13 @@ test('invitation origins reject insecure, credential-bearing or non-origin confi
   }
   assert.equal(setup({}, { NEXT_PUBLIC_SITE_URL:' https://example.test/ ' }).email.getPublicSiteUrl(),'https://example.test');
 });
+
+test('booking prerequisite failures expose only fixed codes and never reserve or contact Wayl', async () => {
+  for (const [patch,code] of [[{WAYL_ENV:undefined},'WAYL_ENV_MISSING'],[{WAYL_ENV:'invalid'},'WAYL_ENV_INVALID'],[{WAYL_USD_TO_IQD_RATE:'invalid'},'WAYL_RATE_INVALID'],[{WAYL_API_TOKEN:undefined},'WAYL_CREDENTIALS_UNAVAILABLE'],[{WAYL_CALLBACK_ORIGIN:'invalid'},'WAYL_CALLBACK_INVALID'],[{WAYL_USD_TO_IQD_RATE:'1'},'WAYL_QUOTE_INVALID']]) {
+    const s=setup({},patch);
+    s.state.consultation_settings=[{id:1,session_duration_minutes:40,base_price_usd:50,discount_percent:0}];
+    const response=await s.createBooking(new Request('https://example.test/api/bookings',{method:'POST',body:JSON.stringify({slot_id:'00000000-0000-4000-8000-000000000000',date:'2026-10-05',start_time:'12:00',client_name:'Diagnostic Probe',client_email:'diagnostic@example.invalid'})}));
+    assert.equal(response.status,503);assert.equal((await response.json()).error,code);
+    assert.equal(s.state.requests.length,0);assert.equal(s.state.writes.length,0);
+  }
+});
