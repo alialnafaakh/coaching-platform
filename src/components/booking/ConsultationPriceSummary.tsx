@@ -8,6 +8,7 @@ type Props = {
   basePriceUsd: number;
   discountPercent: number;
   finalPriceUsd: number;
+  totalIqd?: number | null;
   className?: string;
 };
 
@@ -16,6 +17,7 @@ export default function ConsultationPriceSummary({
   basePriceUsd,
   discountPercent,
   finalPriceUsd,
+  totalIqd,
   className = "",
 }: Props) {
   const { isRtl, t } = useLanguage();
@@ -29,18 +31,22 @@ export default function ConsultationPriceSummary({
       <p className="text-sm text-[#1a1a2e] mt-1">
         {showDiscount ? (
           <>
-            <span className={`text-[#9ca3af] line-through ${isRtl ? "ml-2" : "mr-2"}`}>
-              {formatUsd(basePriceUsd)}
+            <span className={`text-[#6b7280] line-through ${isRtl ? "ml-2" : "mr-2"}`}>
+              <span className="sr-only">{isRtl ? "السعر الأصلي: " : "Original price: "}</span><bdi dir="ltr">{formatUsd(basePriceUsd)}</bdi>
             </span>
-            <span className="font-semibold text-[#0d7377]">{formatUsd(finalPriceUsd)}</span>
-            <span className={`text-xs text-[#9a7520] ${isRtl ? "mr-2" : "ml-2"}`}>
+            <span className="font-semibold text-[#0d7377]"><span className="sr-only">{isRtl ? "السعر المستحق: " : "Payable price: "}</span><bdi dir="ltr">{formatUsd(finalPriceUsd)}</bdi></span>
+            <span className={`text-xs text-[#765510] ${isRtl ? "mr-2" : "ml-2"}`}>
               ({discountPercent}% {t("off_label")})
             </span>
           </>
         ) : (
-          <span className="font-semibold text-[#0d7377]">{formatUsd(finalPriceUsd)}</span>
+          <span className="font-semibold text-[#0d7377]"><bdi dir="ltr">{formatUsd(finalPriceUsd)}</bdi></span>
         )}
       </p>
+      {typeof totalIqd === "number" && <p className="mt-2 text-sm text-[#374151]">
+        {isRtl ? "المبلغ للدفع عبر ويل: " : "Wayl checkout amount: "}
+        <bdi dir="ltr" className="font-semibold">{new Intl.NumberFormat("en-US").format(totalIqd)} IQD</bdi>
+      </p>}
     </div>
   );
 }

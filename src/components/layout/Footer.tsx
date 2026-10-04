@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 
 const InstagramIcon = () => (
@@ -15,14 +16,18 @@ const TikTokIcon = () => (
   </svg>
 );
 
-export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
+export default function Footer({ siteName }: { siteName?: string }) {
   const { isRtl, t } = useLanguage();
+  const pathname = usePathname();
+  const policyNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname === "/policies" && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); window.location.hash = event.currentTarget.hash; }
+  };
 
   const links = [
-    { href: "#about", label: t("about") },
-    { href: "#services", label: t("services") },
-    { href: "#testimonials", label: t("testimonials") },
-    { href: "#pricing", label: t("pricing") },
+    { href: "/#about", label: t("about") },
+    { href: "/#services", label: t("services") },
+    { href: "/#testimonials", label: t("testimonials") },
+    { href: "/#pricing", label: t("pricing") },
   ];
 
   const socialLinks = isRtl
@@ -55,22 +60,22 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
   return (
     <footer className="bg-[#1a1a2e] text-white py-12 px-4 sm:px-6 overflow-x-hidden">
       <div className="max-w-6xl mx-auto">
-        <div className={`flex flex-col md:flex-row justify-between items-start gap-8 ${isRtl ? "md:flex-row-reverse text-right" : "text-left"}`}>
+        <div className={`flex flex-col md:flex-row justify-between items-start gap-8 ${isRtl ? "text-right" : "text-left"}`}>
           {/* Brand */}
           <div className="min-w-0 max-w-full">
             <p
               className={`text-2xl mb-2 ${isRtl ? "font-arabic-display" : ""}`}
               style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
             >
-              {siteName}
+              {siteName ?? (isRtl ? "مريم" : "Maryem")}
             </p>
-            <p className={`text-sm text-white/50 max-w-xs ${isRtl ? "font-arabic" : ""}`}>
+            <p className={`text-sm text-white/70 max-w-xs ${isRtl ? "font-arabic" : ""}`}>
               {isRtl
                 ? "الكوتشينج البيولوجي النفسي الاجتماعي — حيث يلتقي العلم بالقلب."
                 : "Biopsychosocial Relationship Coaching — where science meets the heart."}
             </p>
 
-            <div className={`mt-5 flex flex-wrap gap-3 ${isRtl ? "flex-row-reverse justify-end" : ""}`}>
+            <div className={`mt-5 flex flex-wrap gap-3 ${isRtl ? "" : ""}`}>
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
@@ -79,7 +84,7 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
                   rel="noopener noreferrer"
                   aria-label={`${social.label} @${social.handle}`}
                   title={`@${social.handle}`}
-                  className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 ${social.hoverColor} hover:bg-white/10 hover:border-white/20 transition-all duration-300`}
+                  className={`group flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 ${social.hoverColor} hover:bg-white/10 hover:border-white/20 transition-all duration-300`}
                 >
                   <span className="transition-transform duration-300 group-hover:scale-110">
                     {social.icon}
@@ -94,39 +99,39 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
 
           {/* Navigation */}
           <div className="flex flex-col gap-2">
-            <p className={`text-xs uppercase tracking-widest text-white/40 mb-1 ${isRtl ? "font-arabic" : ""}`}>
+            <p className={`text-xs uppercase tracking-widest text-white/60 mb-1 ${isRtl ? "font-arabic" : ""}`}>
               {t("navigate")}
             </p>
             {links.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
 
           {/* Legal */}
           <div className="flex flex-col gap-2">
-            <p className={`text-xs uppercase tracking-widest text-white/40 mb-1 ${isRtl ? "font-arabic" : ""}`}>
+            <p className={`text-xs uppercase tracking-widest text-white/60 mb-1 ${isRtl ? "font-arabic" : ""}`}>
               {isRtl ? "القانونية" : "Legal"}
             </p>
-            <Link href="/policies#payment" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
+            <Link onClick={policyNavigation} href="/policies#payment" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
               {isRtl ? "سياسة الدفع" : "Payment Policy"}
             </Link>
-            <Link href="/policies#cancellation" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
+            <Link onClick={policyNavigation} href="/policies#cancellation" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
               {isRtl ? "سياسة الإلغاء والاسترداد" : "Cancellation Policy"}
             </Link>
-            <Link href="/policies#privacy" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
+            <Link onClick={policyNavigation} href="/policies#privacy" className={`text-sm text-white/60 hover:text-white transition-colors ${isRtl ? "font-arabic" : ""}`}>
               {isRtl ? "سياسة الخصوصية" : "Privacy Policy"}
             </Link>
           </div>
 
           {/* Contact */}
           <div className="flex flex-col gap-2 min-w-0 max-w-full">
-            <p className={`text-xs uppercase tracking-widest text-white/40 mb-1 ${isRtl ? "font-arabic" : ""}`}>
+            <p className={`text-xs uppercase tracking-widest text-white/60 mb-1 ${isRtl ? "font-arabic" : ""}`}>
               {t("contact")}
             </p>
             <a
@@ -145,9 +150,9 @@ export default function Footer({ siteName = "Maryem" }: { siteName?: string }) {
           </div>
         </div>
 
-        <div className={`mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/30 ${isRtl ? "sm:flex-row-reverse" : ""}`}>
+        <div className={`mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/60 ${isRtl ? "" : ""}`}>
           <p className={isRtl ? "font-arabic" : ""}>
-            © {new Date().getFullYear()} {siteName}. {t("all_rights")}
+            © {new Date().getFullYear()} {siteName ?? (isRtl ? "مريم" : "Maryem")}. {t("all_rights")}
           </p>
           <Link href="/policies" className={`hover:text-white/60 transition-colors ${isRtl ? "font-arabic" : ""}`}>
             {isRtl ? "السياسات" : "Policies"}

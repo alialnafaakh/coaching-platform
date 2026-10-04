@@ -13,6 +13,15 @@ export class WaylError extends Error {
 
 export type WaylEnvironment = "test" | "live";
 
+export function getWaylConversionRate(): number {
+  const rawRate = process.env.WAYL_USD_TO_IQD_RATE?.trim();
+  const rate = rawRate && /^\d+(?:\.\d+)?$/.test(rawRate) ? Number(rawRate) : NaN;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new WaylError("Payment currency conversion is not configured.", 503, "WAYL_RATE_INVALID");
+  }
+  return rate;
+}
+
 export function getWaylEnvironment(): WaylEnvironment {
   const environment = process.env.WAYL_ENV;
   if (environment !== "test" && environment !== "live") {
@@ -25,11 +34,7 @@ export function getWaylCheckoutConfig() {
   const environment = getWaylEnvironment();
   const token = process.env.WAYL_API_TOKEN?.trim();
   const webhookSecret = process.env.WAYL_WEBHOOK_SECRET?.trim();
-  const rawRate = process.env.WAYL_USD_TO_IQD_RATE?.trim();
-  const rate = rawRate && /^\d+(?:\.\d+)?$/.test(rawRate) ? Number(rawRate) : NaN;
-  if (!Number.isFinite(rate) || rate <= 0) {
-    throw new WaylError("Payment currency conversion is not configured.", 503, "WAYL_RATE_INVALID");
-  }
+  const rate = getWaylConversionRate();
   if (!token || !webhookSecret || webhookSecret.length < 10 || webhookSecret.length > 255) {
     throw new WaylError("Payments are not configured.", 503, "WAYL_CREDENTIALS_UNAVAILABLE");
   }
@@ -58,12 +63,18 @@ function usdCents(value: unknown): number {
   return cents;
 }
 
-export function quoteWaylPayment(priceUsd: unknown, rate: number, environment: WaylEnvironment = getWaylEnvironment()) {
+export function calculateWaylTotalIqd(priceUsd: unknown, rate: number): number {
   const cents = usdCents(priceUsd);
   const totalIqd = Math.round(cents * rate / 100);
   if (!Number.isFinite(rate) || rate <= 0 || !Number.isSafeInteger(totalIqd) || totalIqd < 1000) {
     throw new WaylError("Payment currency conversion is not configured.", 503, "WAYL_QUOTE_INVALID");
   }
+  return totalIqd;
+}
+
+export function quoteWaylPayment(priceUsd: unknown, rate: number, environment: WaylEnvironment = getWaylEnvironment()) {
+  const cents = usdCents(priceUsd);
+  const totalIqd = calculateWaylTotalIqd(priceUsd, rate);
   // Preserve the charge quote in the existing reference column so webhook
   // validation does not depend on subsequent exchange-rate configuration changes.
   const referenceId = "wayl_" + environment + "_" + randomUUID() + "_" + cents + "_" + totalIqd;

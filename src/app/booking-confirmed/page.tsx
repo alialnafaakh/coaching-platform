@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { format } from "date-fns";
+import ConsultationPriceSummary from "@/components/booking/ConsultationPriceSummary";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useLanguage } from "@/context/LanguageContext";
@@ -25,14 +25,14 @@ function BookingConfirmedContent() {
   const [checkoutError, setCheckoutError] = useState("");
 
   async function requestCheckout() {
-    if (!id || !token) return;
+    if (!id || !token || appointment?.payment_total_iqd == null) return;
     setCheckoutLoading(true);
     setCheckoutError("");
     try {
       const response = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointment_id: id, token }),
+        body: JSON.stringify({ appointment_id: id, token, expected_total_iqd: appointment.payment_total_iqd }),
       });
       const data = await response.json();
       if (!response.ok || typeof data.url !== "string") {
@@ -104,14 +104,14 @@ function BookingConfirmedContent() {
       }).format(new Date(`${appointment.date}T00:00:00`))
     : "";
   const holdUntil = appointment?.payment_expires_at
-    ? format(new Date(appointment.payment_expires_at), "HH:mm")
+    ? new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date(appointment.payment_expires_at))
     : "";
 
   const toneStyles = {
     pending: {
       iconBg: "linear-gradient(135deg, #c8922a, #d4a843)",
       box: "bg-amber-50 border-amber-200",
-      label: "text-[#9a7520]",
+      label: "text-[#765510]",
       icon: "⏳",
     },
     confirmed: {
@@ -131,13 +131,13 @@ function BookingConfirmedContent() {
   return (
     <>
       <Navbar />
-      <main className={`min-h-screen bg-[#faf9f6] flex items-center justify-center px-6 pt-20 ${isRtl ? "text-right" : "text-left"}`}>
+      <main className={`min-h-screen bg-[#faf9f6] flex items-center justify-center px-4 sm:px-6 pt-24 pb-12 ${isRtl ? "text-right" : "text-left"}`}>
         <div className="max-w-md w-full text-center">
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl mx-auto mb-8 shadow-lg"
             style={{ background: toneStyles.iconBg }}
           >
-            {toneStyles.icon}
+            {error ? "!" : toneStyles.icon}
           </div>
 
           {loading ? (
@@ -148,11 +148,15 @@ function BookingConfirmedContent() {
                 className={`text-4xl text-[#1a1a2e] mb-4 ${isRtl ? "font-arabic-display" : ""}`}
                 style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
               >
-                {!id || !token ? t("booking_missing_access") : t("payment_status_error")}
+                {!id || !token ? (isRtl ? "رابط الحجز غير مكتمل" : "Booking link unavailable") : (isRtl ? "تعذر تحميل حالة الحجز" : "Booking status unavailable")}
               </h1>
               <p className={`text-[#6b7280] text-base leading-relaxed mb-8 ${isRtl ? "font-arabic" : ""}`}>
                 {error}
               </p>
+              <div className="flex flex-col gap-3 mb-6">
+                <Link href="/book" className="rounded-xl bg-[#0d7377] px-5 py-3 text-white">{t("book_session")}</Link>
+                <a href="mailto:biopsychosocial.site@gmail.com" className="text-[#0d7377] underline">{isRtl ? "التواصل مع الدعم" : "Contact support"}</a>
+              </div>
             </>
           ) : (
             <>
@@ -183,15 +187,20 @@ function BookingConfirmedContent() {
                   </p>
                   {formattedDate && (
                     <p className={`text-sm text-[#6b7280] mt-1 ${isRtl ? "font-arabic" : ""}`}>
-                      {formattedDate} · {appointment.start_time.slice(0, 5)} – {appointment.end_time.slice(0, 5)}
+                      {formattedDate}<bdi dir="ltr" className="block mt-1">{appointment.start_time.slice(0, 5)} – {appointment.end_time.slice(0, 5)}</bdi>
                     </p>
                   )}
-                  <p className={`text-xs text-[#9ca3af] mt-2 ${isRtl ? "font-arabic" : ""}`}>
+                  <p className={`text-sm text-[#6b7280] mt-2 ${isRtl ? "font-arabic" : ""}`}>
                     {t("istanbul_time")}
                   </p>
+                  {appointment.session_duration_minutes != null && appointment.base_price_usd != null && appointment.discount_percent != null && appointment.final_price_usd != null && (
+                    <ConsultationPriceSummary className="mt-4" durationMinutes={appointment.session_duration_minutes}
+                      basePriceUsd={appointment.base_price_usd} discountPercent={appointment.discount_percent}
+                      finalPriceUsd={appointment.final_price_usd} totalIqd={appointment.payment_total_iqd} />
+                  )}
                   {copy.tone === "pending" && holdUntil && (
                     <p className={`text-xs mt-3 ${isRtl ? "font-arabic" : ""} ${toneStyles.label}`}>
-                      {t("hold_until")} {holdUntil}
+                      {t("hold_until")} <bdi>{holdUntil}</bdi>
                     </p>
                   )}
                 </div>
@@ -213,7 +222,10 @@ function BookingConfirmedContent() {
                       {lang === "ar" ? "تعذر تجهيز الدفع. تم الاحتفاظ بحجزك المؤقت؛ تواصلي معنا إذا استمرت المشكلة." : "Checkout could not be prepared. Your existing hold is preserved; contact support if this continues."}
                     </p>
                   )}
-                  <button type="button" onClick={requestCheckout} disabled={checkoutLoading}
+                  {searchParams.get("payment") === "review" && <p role="status" className="mt-3 text-sm text-amber-800">{isRtl ? "تغيّر السعر أثناء الحجز. راجعي المبلغ أعلاه قبل المتابعة إلى الدفع." : "Pricing changed while you were booking. Review the amount above before continuing to payment."}</p>}
+                  <Link href="/policies#cancellation" className="block mt-3 text-sm text-[#0d7377] underline">{t("pricing_disclaimer")}</Link>
+                  {appointment?.payment_total_iqd == null && <p role="status" className="mt-3 text-sm text-amber-800">{isRtl ? "تعذر تحميل مبلغ الدفع. تواصلي مع الدعم قبل المتابعة." : "Payment amount is unavailable. Contact support before continuing."}</p>}
+                  <button type="button" onClick={requestCheckout} disabled={checkoutLoading || appointment?.payment_total_iqd == null}
                     className="mt-4 w-full rounded-xl bg-[#0d7377] px-5 py-3 text-sm text-white disabled:opacity-60">
                     {checkoutLoading ? (lang === "ar" ? "جاري تجهيز الدفع…" : "Preparing checkout…") : lang === "ar" ? "الدفع عبر ويل" : "Continue to Wayl checkout"}
                   </button>

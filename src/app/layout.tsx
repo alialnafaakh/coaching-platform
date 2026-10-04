@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 };
 
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ConsultationPricingProvider } from "@/context/ConsultationPricingContext";
 
 export default function RootLayout({
   children,
@@ -39,7 +40,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <LanguageProvider>
-          {children}
+          <ConsultationPricingProvider>{children}</ConsultationPricingProvider>
         </LanguageProvider>
       </body>
     </html>

@@ -183,6 +183,8 @@ function setup(overrides = {}, envOverrides = {}) {
     '@/lib/rateLimit': { getClientIpFromRequest: () => null,
       enforceBookingIpRateLimit: async () => ({ action: 'allow' }) },
   }, env).POST;
+  const readPricing = load('src/app/api/consultation-settings/route.ts', { ...imports, '@/lib/consultationSettings': settings }, env).GET;
+  const readBooking = load('src/app/api/bookings/[id]/route.ts', imports, env).GET;
   const checkout = load('src/app/api/payments/checkout/route.ts', imports, env, undefined, { warn: code => state.diagnostics.push(code) }).POST;
   const webhook = load('src/app/api/payments/webhook/route.ts', imports, env).POST;
   const requestCheckout = (token = 'synthetic-join') => checkout(new Request('https://example.test/api/payments/checkout', {
@@ -195,7 +197,7 @@ function setup(overrides = {}, envOverrides = {}) {
   };
   const adminConfirm = load('src/app/api/appointments/[id]/confirm/route.ts', imports, env).POST;
   const requestAdminConfirm = () => adminConfirm(new Request('https://example.test'), { params: Promise.resolve({ id: state.appointments[0].id }) });
-  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm, email, createBooking };
+  return { state, env, wayl, bookings, db, requestCheckout, event, requestAdminConfirm, email, createBooking, readPricing, readBooking };
 }
 
 test('checkout uses the existing snapshot/hold, official TEST body and returned URL', async () => {
@@ -641,4 +643,56 @@ test('booking prerequisite failures expose only fixed codes and never reserve or
     assert.equal(response.status,503);assert.equal((await response.json()).error,code);
     assert.equal(s.state.requests.length,0);assert.equal(s.state.writes.length,0);
   }
+});
+
+
+test('public pricing and discounted LIVE checkout use the server quote at 1310, ignoring client amounts', async () => {
+  const s = setup({ payment_reference: null, payment_provider: null, base_price_usd: 50, discount_percent: 20, final_price_usd: 40 }, { WAYL_ENV: 'live', WAYL_USD_TO_IQD_RATE: '1310' });
+  s.state.consultation_settings = [{ id: 1, session_duration_minutes: 40, base_price_usd: 50, discount_percent: 20 }];
+  assert.equal(s.wayl.calculateWaylTotalIqd(1, 1310), 1310);
+  assert.equal(s.wayl.calculateWaylTotalIqd(40, 1310), 52400);
+  const pricing = await s.readPricing();
+  assert.equal(pricing.status, 200);
+  assert.equal(pricing.headers.get('cache-control'), 'no-store');
+  const data = await pricing.json();
+  assert.equal(data.base_price_usd, 50); assert.equal(data.discount_percent, 20);
+  assert.equal(data.final_price_usd, 40); assert.equal(data.payment_total_iqd, 52400);
+  assert.equal(data.usd_to_iqd_rate, 1310);
+  assert.equal(Object.keys(data).length, 6); assert.equal(s.state.requests.length, 0);
+  // requestCheckout deliberately submits total=1; the server must ignore it.
+  assert.equal((await s.requestCheckout()).status, 200);
+  assert.equal(s.state.requests[0].body.total, 52400);
+  assert.equal(s.state.requests[0].body.lineItem[0].amount, 52400);
+  assert.equal(s.state.appointments[0].payment_status, 'unpaid');
+  s.env.WAYL_USD_TO_IQD_RATE = '1450';
+  assert.equal(s.wayl.referenceAmount(s.state.appointments[0].payment_reference, 40), 52400);
+  const bookingReq = new Request('https://example.test/api/bookings/x');
+  bookingReq.nextUrl = new URL('https://example.test/api/bookings/x?token=synthetic-join');
+  const snapshot = await s.readBooking(bookingReq, { params: Promise.resolve({ id: s.state.appointments[0].id }) });
+  assert.equal((await snapshot.json()).appointment.payment_total_iqd, 52400);
+});
+
+test('changed public pricing refreshes without booking mutations; unavailable configuration has no fallback price', async () => {
+  const s = setup({}, { WAYL_USD_TO_IQD_RATE: '1310' });
+  s.state.consultation_settings = [{ id: 1, session_duration_minutes: 40, base_price_usd: 1, discount_percent: 0 }];
+  assert.equal((await (await s.readPricing()).json()).payment_total_iqd, 1310);
+  s.state.consultation_settings[0].base_price_usd = 50;
+  s.state.consultation_settings[0].discount_percent = 20;
+  assert.equal((await (await s.readPricing()).json()).payment_total_iqd, 52400);
+  assert.equal(s.state.requests.length, 0); assert.equal(s.state.writes.length, 0);
+  s.env.WAYL_USD_TO_IQD_RATE = '';
+  const failed = await s.readPricing(); assert.equal(failed.status, 503);
+  assert.deepEqual(await failed.json(), { error: 'PRICING_UNAVAILABLE' });
+});
+
+test('a stale customer IQD quote is a precondition and cannot claim a reference or call Wayl', async () => {
+  const s = setup({ payment_reference: null, payment_provider: null, final_price_usd: 40 }, { WAYL_USD_TO_IQD_RATE: '1310' });
+  const checkout = load('src/app/api/payments/checkout/route.ts', {
+    '@/lib/serverSecurity': load('src/lib/serverSecurity.ts', {}, s.env),
+    'next/server': { NextResponse: Response }, '@/lib/wayl': s.wayl,
+    '@/lib/bookings': s.bookings, '@/lib/supabase': { getSupabaseAdmin: () => s.db },
+  }, s.env).POST;
+  const result = await checkout(new Request('https://example.test/api/payments/checkout', { method: 'POST', body: JSON.stringify({ appointment_id: s.state.appointments[0].id, token: 'synthetic-join', expected_total_iqd: 58000 }) }));
+  assert.equal(result.status, 409); assert.equal(s.state.requests.length, 0);
+  assert.equal(s.state.writes.length, 0); assert.equal(s.state.appointments[0].payment_reference, null);
 });

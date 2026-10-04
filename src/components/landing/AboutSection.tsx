@@ -26,6 +26,9 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
   const [reviewCount, setReviewCount] = useState(0);
 
   const tags = t("tags");
+  const headline = t("about_headline");
+  const highlight = t("about_highlight");
+  const highlightAt = headline.indexOf(highlight);
   const imageAlt =
     typeof content?.imageAlt === "string" && content.imageAlt.trim()
       ? content.imageAlt.trim()
@@ -131,7 +134,7 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
             initial={{ opacity: 0, x: isRtl ? -40 : 40 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.5 }}
-            className={`hidden md:block absolute ${
+            className={`hidden lg:block absolute ${
               isRtl ? "-left-6" : "-right-6"
             } top-12 bg-white rounded-2xl p-5 shadow-xl max-w-[200px] ${
               isRtl ? "text-right" : "text-left"
@@ -153,7 +156,7 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
             initial={{ opacity: 0, x: isRtl ? 30 : -30 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.65 }}
-            className={`hidden md:block absolute ${
+            className={`hidden lg:block absolute ${
               isRtl ? "-right-4" : "-left-4"
             } bottom-16 bg-[#1a1a2e] text-white rounded-2xl px-4 py-3 shadow-xl max-w-[220px] ${
               isRtl ? "text-right" : "text-left"
@@ -163,7 +166,7 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
           </motion.div>
 
           {/* Mobile: stack badges under image — no negative offsets */}
-          <div className="md:hidden mt-4 flex flex-col gap-3">
+          <div className="lg:hidden mt-4 flex flex-col gap-3">
             <div
               className={`bg-white rounded-2xl p-4 shadow-sm border border-[#e5e0d8] ${
                 isRtl ? "text-right" : "text-left"
@@ -182,7 +185,7 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
             </div>
             <div
               className={`bg-[#1a1a2e] text-white rounded-2xl px-4 py-3.5 shadow-sm flex items-center ${
-                isRtl ? "text-right justify-end" : "text-left"
+                isRtl ? "text-right" : "text-left"
               }`}
             >
               {ratingBadge}
@@ -214,7 +217,7 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
             }`}
             style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            {t("about_headline").split(t("about_highlight"))[0]}
+            {highlightAt < 0 ? headline : headline.slice(0, highlightAt)}
             <span
               style={{
                 background: "linear-gradient(135deg, #0d7377, #d4a843)",
@@ -223,9 +226,9 @@ export default function AboutSection({ content }: { content?: { imageUrl?: strin
                 backgroundClip: "text",
               }}
             >
-              {t("about_highlight")}
+              {highlightAt < 0 ? "" : highlight}
             </span>
-            {t("about_headline").split(t("about_highlight"))[1]}
+            {highlightAt < 0 ? "" : headline.slice(highlightAt + highlight.length)}
           </motion.h2>
 
           <motion.p

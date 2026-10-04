@@ -45,6 +45,7 @@ export interface Appointment {
 }
 
 export interface PublicAppointment {
+  payment_total_iqd?: number | null;
   id: string;
   status: AppointmentStatus;
   payment_status: PaymentStatus;
@@ -62,6 +63,8 @@ export interface PublicAppointment {
 }
 
 export interface ConsultationSettingsPublic {
+  payment_total_iqd?: number;
+  usd_to_iqd_rate?: number;
   session_duration_minutes: number;
   base_price_usd: number;
   discount_percent: number;

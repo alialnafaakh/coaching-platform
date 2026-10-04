@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
     const body = await boundedJson(req).catch(() => null);
     const id = body?.appointment_id;
     const token = body?.token;
+    const expectedIqd = body?.expected_total_iqd;
+    if (expectedIqd !== undefined && (!Number.isSafeInteger(expectedIqd) || Number(expectedIqd) < 1000)) {
+      return failure("Please review the payment amount before continuing.", 400);
+    }
     if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) ||
         typeof token !== "string" || !token || token.length > 128) {
       return failure("Booking access is required.", 400);
@@ -42,7 +46,10 @@ export async function POST(req: NextRequest) {
       if (appointment.payment_provider === "wayl" &&
           validWaylCheckoutUrl(appointment.payment_checkout_url) &&
           Number.isFinite(checkoutExpiry) && checkoutExpiry > Date.now() && checkoutExpiry <= expiry) {
-        referenceAmount(appointment.payment_reference, appointment.final_price_usd);
+        const storedIqd = referenceAmount(appointment.payment_reference, appointment.final_price_usd);
+        if (expectedIqd !== undefined && expectedIqd !== storedIqd) {
+          return failure("The payment quote has changed. Refresh and review it before continuing.", 409);
+        }
         console.warn("CHECKOUT_REUSED");
         return NextResponse.json({ url: appointment.payment_checkout_url }, { headers: { "Cache-Control": "no-store" } });
       }
@@ -52,6 +59,10 @@ export async function POST(req: NextRequest) {
     // Validate configuration and pricing before reference mutation or API requests.
     const config = getWaylCheckoutConfig();
     const quote = quoteWaylPayment(appointment.final_price_usd, config.rate, config.environment);
+    // A client quote is only a precondition, never an authoritative charge amount.
+    if (expectedIqd !== undefined && expectedIqd !== quote.totalIqd) {
+      return failure("The payment quote has changed. Refresh and review it before continuing.", 409);
+    }
     const { data: claimed, error: claimError } = await db.from("appointments")
       .update({ payment_provider: "wayl", payment_reference: quote.referenceId })
       .eq("id", id).eq("join_token", appointment.join_token)

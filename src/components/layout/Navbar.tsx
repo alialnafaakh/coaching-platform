@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
+export default function Navbar({ siteName }: { siteName?: string }) {
   const { isRtl, t } = useLanguage();
+  const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -20,10 +23,10 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
   }, []);
 
   const links = [
-    { href: "#about", label: t("about") },
-    { href: "#services", label: t("services") },
-    { href: "#testimonials", label: t("testimonials") },
-    { href: "#pricing", label: t("pricing") },
+    { href: "/#about", label: t("about") },
+    { href: "/#services", label: t("services") },
+    { href: "/#testimonials", label: t("testimonials") },
+    { href: "/#pricing", label: t("pricing") },
   ];
 
   return (
@@ -38,16 +41,20 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
       }`}
     >
       <div
-        className={`max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 min-w-0 ${
-          isRtl ? "flex-row-reverse" : ""
-        }`}
+        className={`max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 min-w-0`}
       >
         {/* Logo — start side in LTR/RTL */}
         <Link
           href="/"
-          className={`flex items-center gap-2 group min-w-0 shrink ${
-            isRtl ? "flex-row-reverse" : ""
-          }`}
+          onClick={(event) => {
+            setMenuOpen(false);
+            if (pathname === "/" && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+              event.preventDefault();
+              router.replace("/", { scroll: false });
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className={`flex items-center gap-2 group min-w-0 shrink-0`}
         >
           <Image
             src="/brand/maryem-logo.webp"
@@ -59,29 +66,29 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
             className="w-10 h-10 object-contain rounded-full flex-shrink-0"
           />
           <span
-            className={`font-display text-xl text-[#1a1a2e] tracking-wide truncate ${isRtl ? "font-arabic-display" : ""}`}
+            className={`font-display text-xl text-[#1a1a2e] tracking-wide ${isRtl ? "font-arabic-display" : ""}`}
             style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
-            {siteName}
+            {siteName ?? (isRtl ? "مريم" : "Maryem")}
           </span>
         </Link>
 
         {/* Desktop nav */}
         <nav
-          className={`hidden md:flex items-center gap-8 ${isRtl ? "flex-row-reverse" : ""}`}
+          className={`hidden lg:flex items-center gap-8`}
         >
-          <div className={`flex items-center gap-8 ${isRtl ? "flex-row-reverse" : ""}`}>
+          <div className={`flex items-center gap-8`}>
             {links.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className={`text-sm font-medium text-[#6b7280] hover:text-[#0d7377] transition-colors duration-200 whitespace-nowrap ${isRtl ? "font-arabic" : ""}`}
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
-          <div className={`flex items-center gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
+          <div className={`flex items-center gap-4`}>
             <LanguageSwitcher />
             <Link
               href="/book"
@@ -95,16 +102,15 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
 
         {/* Mobile: language always visible + hamburger (≥44px) */}
         <div
-          className={`md:hidden flex items-center gap-1.5 flex-shrink-0 ${
-            isRtl ? "flex-row-reverse" : ""
-          }`}
+          className={`lg:hidden flex items-center gap-1.5 flex-shrink-0`}
         >
           <LanguageSwitcher />
           <button
             type="button"
             className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl text-[#1a1a2e] hover:bg-[#f0ede6]/80"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={isRtl ? (menuOpen ? "إغلاق القائمة" : "فتح القائمة") : (menuOpen ? "Close menu" : "Open menu")}
+            aria-controls={menuOpen ? "mobile-navigation" : undefined}
             aria-expanded={menuOpen}
           >
             <div className="w-5 space-y-1.5" aria-hidden>
@@ -135,7 +141,8 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-[#e5e0d8] overflow-hidden"
+            id="mobile-navigation"
+            className="lg:hidden bg-white border-b border-[#e5e0d8] overflow-hidden"
           >
             <div
               className={`px-4 sm:px-6 py-4 flex flex-col gap-1 ${
@@ -143,14 +150,14 @@ export default function Navbar({ siteName = "Maryem" }: { siteName?: string }) {
               }`}
             >
               {links.map((l) => (
-                <a
+                <Link
                   key={l.href}
                   href={l.href}
-                  className={`min-h-[44px] flex items-center text-sm font-medium text-[#6b7280] hover:text-[#0d7377] transition-colors ${isRtl ? "font-arabic justify-end" : ""}`}
+                  className={`min-h-[44px] flex items-center text-sm font-medium text-[#6b7280] hover:text-[#0d7377] transition-colors ${isRtl ? "font-arabic" : ""}`}
                   onClick={() => setMenuOpen(false)}
                 >
                   {l.label}
-                </a>
+                </Link>
               ))}
               <Link
                 href="/book"

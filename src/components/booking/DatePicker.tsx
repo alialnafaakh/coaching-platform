@@ -32,7 +32,14 @@ export default function BookingDatePicker({ selected, onSelect }: Props) {
         disabled={{ before: today }}
         startMonth={today}
         showOutsideDays
-        className="rdp-root"
+        className="rdp-root booking-calendar"
+        labels={isRtl ? {
+          labelNext: () => "الشهر التالي",
+          labelPrevious: () => "الشهر السابق",
+          labelNav: () => "التنقل بين الأشهر",
+          labelGrid: (date) => new Intl.DateTimeFormat("ar-EG", { month: "long", year: "numeric" }).format(date),
+          labelDayButton: (date, modifiers) => `${modifiers.today ? "اليوم، " : ""}${new Intl.DateTimeFormat("ar-EG", { dateStyle: "full" }).format(date)}${modifiers.selected ? "، مختار" : ""}`,
+        } : undefined}
         locale={lang === "ar" ? ar : undefined}
         dir={isRtl ? "rtl" : "ltr"}
       />

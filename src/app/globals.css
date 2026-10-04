@@ -142,6 +142,21 @@ body {
   border: 1.5px solid #0d7377 !important;
 }
 
+/* Keep seven calendar columns inside the booking card at 320px. */
+.rdp-root.booking-calendar {
+  --rdp-accent-color: #0d7377;
+  --rdp-accent-background-color: #e6f4f4;
+  --rdp-day-width: clamp(30px, calc((100vw - 80px) / 7), 44px);
+  --rdp-day_button-width: var(--rdp-day-width);
+  --rdp-day-height: 44px;
+  --rdp-day_button-height: 42px;
+  max-width: 100%;
+}
+
+.booking-calendar .rdp-weekday { font-size: 0.75rem; }
+
+section[id] { scroll-margin-top: 80px; }
+
 .rdp-disabled .rdp-day_button {
   opacity: 0.3 !important;
   cursor: not-allowed !important;

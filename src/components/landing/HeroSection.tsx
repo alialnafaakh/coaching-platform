@@ -2,6 +2,7 @@
 
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
+import CurrentConsultationPrice from "@/components/booking/CurrentConsultationPrice";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -66,7 +67,7 @@ export default function HeroSection({ content, availability = "Accepting New Cli
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className={`text-5xl md:text-7xl leading-tight mb-6 text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
+          className={`text-4xl sm:text-5xl md:text-7xl leading-tight mb-6 text-[#1a1a2e] ${isRtl ? "font-arabic-display" : ""}`}
           style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif", fontWeight: isRtl ? 700 : 400 }}
         >
           {content?.headline?.split(content?.highlight || "")[0] || ""}
@@ -103,17 +104,17 @@ export default function HeroSection({ content, availability = "Accepting New Cli
         >
           <Link
             href="/book"
-            className={`px-8 py-4 rounded-full text-base font-medium text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 ${isRtl ? "font-arabic" : ""}`}
+            className={`w-full sm:w-auto px-6 sm:px-8 py-4 rounded-full text-base font-medium text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 ${isRtl ? "font-arabic" : ""}`}
             style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
           >
-            {t("book_now")} {isRtl ? "←" : "→"}
+            {t("book_now")} {isRtl ? "←" : "→"}<span className="block mt-1"><CurrentConsultationPrice compact /></span>
           </Link>
-          <a
-            href="#about"
+          <Link
+            href="/#about"
             className={`px-8 py-4 rounded-full text-base font-medium text-[#0d7377] border border-[#0d7377]/30 hover:bg-[#0d7377]/5 transition-all duration-200 ${isRtl ? "font-arabic" : ""}`}
           >
             {t("learn_more")} {isRtl ? "↑" : "↓"}
-          </a>
+          </Link>
         </motion.div>
       </div>
 

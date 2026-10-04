@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
+import CurrentConsultationPrice from "@/components/booking/CurrentConsultationPrice";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function CTASection() {
@@ -58,13 +59,13 @@ export default function CTASection() {
         >
           <Link
             href="/book"
-            className="inline-block px-10 py-5 rounded-full text-base font-medium text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
+            className="inline-block w-full sm:w-auto px-6 sm:px-10 py-5 rounded-full text-base font-medium text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
             style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
           >
-            {t("book_now")} {isRtl ? "←" : "→"}
+            {t("book_now")} {isRtl ? "←" : "→"}<span className="block mt-1"><CurrentConsultationPrice compact /></span>
           </Link>
 
-          <p className="mt-5 text-xs text-white/30">
+          <p className="mt-5 text-xs text-white/70">
             {t("cta_footer")}
           </p>
         </motion.div>

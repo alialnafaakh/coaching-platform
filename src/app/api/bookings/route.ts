@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { newJoinToken, toPublicAppointment, validateCustomer } from "@/lib/bookings";
-import { getWaylCheckoutConfig, quoteWaylPayment, WaylError } from "@/lib/wayl";
+import { getWaylCheckoutConfig, calculateWaylTotalIqd, WaylError } from "@/lib/wayl";
 import { calculateFinalPrice, getConsultationSettings } from "@/lib/consultationSettings";
 import { enforceBookingIpRateLimit, getClientIpFromRequest } from "@/lib/rateLimit";
 import { boundedJson, PRIVATE_HEADERS } from "@/lib/serverSecurity";
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     stage = "BOOKING_PAYMENT_CONFIGURATION_UNAVAILABLE";
     const config = getWaylCheckoutConfig();
     // Validate minimum charge before holding inventory; never calls Wayl here.
-    quoteWaylPayment(calculateFinalPrice(settings.base_price_usd, settings.discount_percent), config.rate, config.environment);
+    const paymentTotalIqd = calculateWaylTotalIqd(calculateFinalPrice(settings.base_price_usd, settings.discount_percent), config.rate);
     const token = newJoinToken();
     stage = "BOOKING_RESERVATION_UNAVAILABLE";
     const { data, error } = await db.rpc("reserve_booking", {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     });
     if (error) { console.error("BOOKING_RESERVATION_UNAVAILABLE"); return failure("BOOKING_RESERVATION_UNAVAILABLE", "Unable to reserve this time.", 503); }
     if (!data?.appointment) return failure(data?.error || "slot_unavailable", "This time or pricing has changed. Please refresh and try again.", 409);
-    return NextResponse.json({ appointment: toPublicAppointment(data.appointment as Appointment), token },
+    return NextResponse.json({ appointment: { ...toPublicAppointment(data.appointment as Appointment), payment_total_iqd: paymentTotalIqd }, token },
       { status: 201, headers: PRIVATE_HEADERS });
   } catch (error) {
     const code = error instanceof WaylError && error.code ? error.code : stage;

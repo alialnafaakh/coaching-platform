@@ -4,6 +4,8 @@ import { useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Link from "next/link";
+import CurrentConsultationPrice from "@/components/booking/CurrentConsultationPrice";
 import { useLanguage } from "@/context/LanguageContext";
 
 const policies = {
@@ -15,26 +17,27 @@ const policies = {
       sections: [
         {
           heading: "Session Pricing",
-          body: "Sessions are currently offered at a special rate of $50 (regular price $100). Pricing is shown at booking. Payment instructions are shared after you reserve a time; your session is confirmed once payment is completed.",
+          body: "The current session price and any discount are shown below and when you book. Your booking keeps the price agreed at reservation; later pricing changes do not change that booking.",
         },
         {
           heading: "Payment Processing",
-          body: "Online card checkout is not active on this site yet. After you book, we will share how to complete payment for your reserved session. When an online payment option is enabled, transactions will be handled by a third-party provider.",
+          body: "Online payments are processed through Wayl. After you reserve a time, you can continue to Wayl to complete payment. Your booking is confirmed only after the payment provider securely verifies successful payment. Reaching or returning from the payment page does not confirm a booking.",
         },
         {
           heading: "Data Security",
-          body: "We do not store card or bank details on our servers. If you pay through a future online provider, card data will be handled by that provider under their security standards. We only receive confirmation that payment was successful.",
+          body: "We do not collect or store your card or bank details on this website. You enter payment details through Wayl. The website receives payment confirmation to update your booking.",
         },
         {
           heading: "Currency",
-          body: "All prices are listed in US Dollars (USD). Your bank or card provider may apply a currency conversion fee if your account is in a different currency.",
+          body: "Prices are displayed in US Dollars (USD). Wayl checkout is charged in Iraqi Dinars (IQD), calculated using the website’s applicable USD-to-IQD conversion rate at checkout. The payable IQD amount is shown before you continue to payment.",
         },
+        { heading: "Pending reservations", body: "An unpaid or unverified booking remains pending. Its temporary hold may expire if payment is not completed and verified in time. Cancellation and refund requests are governed by our Cancellation & Refund Policy." }
       ],
     },
     {
       id: "cancellation",
       icon: "📋",
-      title: "Cancellation & Return Policy",
+      title: "Cancellation & Refund Policy",
       sections: [
         {
           heading: "Cancellation Window",
@@ -42,7 +45,7 @@ const policies = {
         },
         {
           heading: "Refund Amount",
-          body: "Cancellations made more than 24 hours in advance are eligible for an 80–100% refund of the total amount paid. The exact refund percentage may depend on processing fees applied by the payment provider at the time of the transaction.",
+          body: "Cancellations made at least 24 hours in advance are eligible for an 80–100% refund of the total amount paid. The exact refund percentage may depend on processing fees applied by the payment provider at the time of the transaction.",
         },
         {
           heading: "Late Cancellations",
@@ -73,7 +76,7 @@ const policies = {
         },
         {
           heading: "Payment Information",
-          body: "We do not collect or store card or bank details on this website. When online payment is enabled, payment data will be processed exclusively by the payment provider.",
+          body: "We do not collect or store card or bank details on this website. Payment details are processed through Wayl.",
         },
         {
           heading: "Confidentiality",
@@ -110,20 +113,21 @@ const policies = {
       sections: [
         {
           heading: "أسعار الجلسات",
-          body: "تُقدَّم الجلسات حاليًا بسعر خاص يبلغ 50 دولارًا (السعر الأصلي 100 دولار). تظهر الأسعار عند الحجز. تُشارك تعليمات الدفع بعد حجز الوقت؛ وتُؤكَّد الجلسة بعد إتمام الدفع.",
+          body: "تظهر أدناه وعند الحجز أسعار الجلسات الحالية وأي خصم متاح. يحتفظ حجزك بالسعر المعتمد وقت الحجز، ولا تؤثر تغييرات الأسعار اللاحقة على هذا الحجز.",
         },
         {
           heading: "معالجة المدفوعات",
-          body: "الدفع الإلكتروني بالبطاقة غير مفعّل على هذا الموقع حاليًا. بعد الحجز، سنشارك طريقة إتمام الدفع لجلستك المحجوزة. عند تفعيل خيار الدفع الإلكتروني، ستُعالَج المعاملات عبر مزود خارجي.",
+          body: "تُعالج المدفوعات الإلكترونية عبر ويل (Wayl). بعد حجز الوقت مؤقتًا، يمكنك المتابعة إلى ويل لإتمام الدفع. لا يُؤكَّد الحجز إلا بعد التحقق الآمن من نجاح الدفع لدى مزود الدفع؛ والوصول إلى صفحة الدفع أو العودة منها لا يعني تأكيد الحجز.",
         },
         {
           heading: "أمان البيانات",
-          body: "لا نخزّن بيانات البطاقات أو الحسابات المصرفية على خوادمنا. إذا دفعت عبر مزود إلكتروني مستقبلاً، ستُعالَج بيانات البطاقة من قِبله وفق معاييره الأمنية. نتلقى فقط تأكيدًا بنجاح الدفع.",
+          body: "لا نجمع أو نخزّن بيانات بطاقتك أو حسابك المصرفي على هذا الموقع. تُدخل بيانات الدفع عبر ويل، ويتلقى الموقع تأكيد الدفع لتحديث حالة حجزك.",
         },
         {
           heading: "العملة",
-          body: "جميع الأسعار مدرجة بالدولار الأمريكي (USD). قد يطبّق بنكك أو مزود البطاقة رسوم تحويل عملة إذا كان حسابك بعملة مختلفة.",
+          body: "تُعرض الأسعار بالدولار الأمريكي (USD)، بينما يُحصَّل الدفع عبر ويل بالدينار العراقي (IQD). يُحسب المبلغ وفق سعر التحويل المعتمد على الموقع عند الدفع، ويظهر لك المبلغ المستحق بالدينار قبل المتابعة.",
         },
+        { heading: "الحجز المؤقت", body: "يبقى الحجز بانتظار التأكيد إذا لم يكتمل الدفع أو لم يُتحقق منه. وقد تنتهي صلاحية الحجز المؤقت إذا لم يكتمل الدفع والتحقق خلال المهلة المحددة. تخضع طلبات الإلغاء والاسترداد لسياسة الإلغاء والاسترداد على الموقع." }
       ],
     },
     {
@@ -137,7 +141,7 @@ const policies = {
         },
         {
           heading: "مبلغ الاسترداد",
-          body: "الإلغاءات التي تتم قبل أكثر من 24 ساعة مؤهلة لاسترداد 80 إلى 100% من المبلغ الإجمالي المدفوع. قد تعتمد النسبة الدقيقة للاسترداد على رسوم المعالجة التي يطبّقها مزود الدفع وقت المعاملة.",
+          body: "الإلغاءات التي تتم قبل 24 ساعة على الأقل مؤهلة لاسترداد 80 إلى 100% من المبلغ الإجمالي المدفوع. قد تعتمد النسبة الدقيقة للاسترداد على رسوم المعالجة التي يطبّقها مزود الدفع وقت المعاملة.",
         },
         {
           heading: "الإلغاء المتأخر",
@@ -168,7 +172,7 @@ const policies = {
         },
         {
           heading: "معلومات الدفع",
-          body: "لا نجمع أو نخزّن تفاصيل البطاقات أو الحسابات المصرفية على هذا الموقع. عند تفعيل الدفع الإلكتروني، ستُعالَج بيانات الدفع حصريًا من قِبل مزود الدفع.",
+          body: "لا نجمع أو نخزّن تفاصيل البطاقات أو الحسابات المصرفية على هذا الموقع. تُعالج بيانات الدفع عبر ويل.",
         },
         {
           heading: "السرية المهنية",
@@ -201,17 +205,18 @@ const policies = {
 
 function subscribeHash(notify: () => void) {
   window.addEventListener("hashchange", notify);
-  return () => window.removeEventListener("hashchange", notify);
+  window.addEventListener("popstate", notify);
+  return () => { window.removeEventListener("hashchange", notify); window.removeEventListener("popstate", notify); };
 }
 export default function PoliciesPage() {
   const { isRtl } = useLanguage();
   const content = isRtl ? policies.ar : policies.en;
-  const [selectedTab, setActiveTab] = useState<number | null>(null);
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash.slice(1), () => "");
-  const activeTab = selectedTab ?? Math.max(0, content.findIndex(p => p.id === hash));
+  const activeTab = Math.max(0, content.findIndex(p => p.id === hash));
   const [openSection, setOpenSection] = useState<number | null>(null);
 
   const active = content[activeTab];
+  const selectPolicy = (index: number) => { window.location.hash = content[index].id; setOpenSection(null); };
 
   return (
     <>
@@ -225,7 +230,7 @@ export default function PoliciesPage() {
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`text-xs uppercase tracking-widest text-white/50 mb-3 ${isRtl ? "font-arabic" : ""}`}
+            className={`text-xs uppercase tracking-widest text-white/70 mb-3 ${isRtl ? "font-arabic" : ""}`}
           >
             {isRtl ? "الشفافية والثقة" : "Transparency & Trust"}
           </motion.p>
@@ -242,7 +247,7 @@ export default function PoliciesPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className={`text-sm text-white/60 max-w-md mx-auto ${isRtl ? "font-arabic" : ""}`}
+            className={`text-sm text-white/80 max-w-md mx-auto ${isRtl ? "font-arabic" : ""}`}
           >
             {isRtl
               ? "نؤمن بالشفافية الكاملة. اقرأ سياساتنا لتعرف كيف نتعامل مع حجزك وبياناتك."
@@ -252,12 +257,20 @@ export default function PoliciesPage() {
 
         {/* Tab Nav */}
         <div className="sticky top-16 z-10 bg-[#faf9f6]/90 backdrop-blur border-b border-[#e5e0d8] px-6">
-          <div className={`max-w-3xl mx-auto flex ${isRtl ? "flex-row-reverse" : ""} overflow-x-auto`}>
+          <div className="max-w-3xl mx-auto py-3 sm:hidden">
+            <label htmlFor="policy-selector" className="block mb-2 text-sm text-[#374151]">{isRtl ? "اختر السياسة" : "Choose a policy"}</label>
+            <select id="policy-selector" value={activeTab} onChange={event => selectPolicy(Number(event.target.value))} aria-controls="policy-content" className="w-full rounded-xl border border-[#e5e0d8] bg-white p-3 text-base">
+              {content.map((policy, i) => <option key={policy.id} value={i}>{policy.title}</option>)}
+            </select>
+          </div>
+          <div className="max-w-3xl mx-auto hidden sm:flex overflow-x-auto">
             {content.map((policy, i) => (
               <button
                 key={policy.id}
                 id={`policy-tab-${policy.id}`}
-                onClick={() => { setActiveTab(i); setOpenSection(null); }}
+                onClick={() => selectPolicy(i)}
+                aria-pressed={activeTab === i}
+                aria-controls="policy-content"
                 className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-all ${
                   activeTab === i
                     ? "border-[#0d7377] text-[#0d7377]"
@@ -272,7 +285,7 @@ export default function PoliciesPage() {
         </div>
 
         {/* Policy Content */}
-        <div className="max-w-3xl mx-auto px-6 py-12">
+        <div id="policy-content" className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -301,8 +314,10 @@ export default function PoliciesPage() {
                   >
                     <button
                       id={`section-${active.id}-${idx}`}
+                      aria-expanded={openSection === idx}
+                      aria-controls={`panel-${active.id}-${idx}`}
                       onClick={() => setOpenSection(openSection === idx ? null : idx)}
-                      className={`w-full flex items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-[#f8f6f2] ${isRtl ? "flex-row-reverse text-right" : ""}`}
+                      className={`w-full flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-[#f8f6f2] ${isRtl ? "text-right" : "text-left"}`}
                     >
                       <span className={`font-medium text-[#1a1a2e] text-sm ${isRtl ? "font-arabic" : ""}`}>
                         {section.heading}
@@ -316,21 +331,13 @@ export default function PoliciesPage() {
                       </motion.span>
                     </button>
 
-                    <AnimatePresence>
-                      {openSection === idx && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden"
-                        >
-                          <div className={`px-6 pb-5 pt-0 text-sm text-[#6b7280] leading-relaxed border-t border-[#f0ede6] ${isRtl ? "font-arabic" : ""}`}>
-                            {section.body}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div id={`panel-${active.id}-${idx}`} role="region" aria-labelledby={`section-${active.id}-${idx}`} hidden={openSection !== idx}>
+                      <div className={`px-6 pb-5 pt-3 text-base text-[#4b5563] leading-relaxed border-t border-[#f0ede6] ${isRtl ? "font-arabic" : ""}`}>
+                        <p>{section.body}</p>
+                        {active.id === "payment" && idx === 0 && <div className="mt-4"><CurrentConsultationPrice /></div>}
+                        {active.id === "payment" && idx === active.sections.length - 1 && <Link href="/policies#cancellation" onClick={event => { event.preventDefault(); selectPolicy(1); }} className="inline-block mt-3 text-[#0d7377] underline">{isRtl ? "سياسة الإلغاء والاسترداد" : "Cancellation & Refund Policy"}</Link>}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

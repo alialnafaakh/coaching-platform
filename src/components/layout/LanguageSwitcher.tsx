@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
     <div
       className="flex items-center gap-0.5 bg-[#f0ede6] p-1 rounded-full border border-[#e5e0d8]"
       role="group"
-      aria-label="Language"
+      aria-label={lang === "ar" ? "اللغة" : "Language"}
     >
       <button
         type="button"
@@ -20,6 +20,7 @@ export default function LanguageSwitcher() {
             : "text-[#6b7280] hover:text-[#1a1a2e]"
         }`}
         aria-pressed={lang === "en"}
+        aria-label={lang === "ar" ? "الإنجليزية" : "English"}
       >
         EN
       </button>
@@ -32,6 +33,7 @@ export default function LanguageSwitcher() {
             : "text-[#6b7280] hover:text-[#1a1a2e]"
         }`}
         aria-pressed={lang === "ar"}
+        aria-label={lang === "ar" ? "العربية" : "Arabic"}
       >
         AR
       </button>

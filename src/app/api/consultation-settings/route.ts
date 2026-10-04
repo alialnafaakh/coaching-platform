@@ -2,6 +2,7 @@ import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { calculateWaylTotalIqd, getWaylConversionRate } from "@/lib/wayl";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   calculateFinalPrice,
@@ -14,12 +15,21 @@ export const dynamic = "force-dynamic";
 
 /** Public read — booking UI needs current duration/pricing. */
 export async function GET() {
-  const db = getSupabaseAdmin();
-  const settings = await getConsultationSettings(db);
-  return NextResponse.json({
-    ...settings,
-    final_price_usd: calculateFinalPrice(settings.base_price_usd, settings.discount_percent),
-  });
+  try {
+    const db = getSupabaseAdmin();
+    const settings = await getConsultationSettings(db);
+    const finalPrice = calculateFinalPrice(settings.base_price_usd, settings.discount_percent);
+    const rate = getWaylConversionRate();
+    return NextResponse.json({
+      ...settings,
+      final_price_usd: finalPrice,
+      payment_total_iqd: calculateWaylTotalIqd(finalPrice, rate),
+      usd_to_iqd_rate: rate,
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "PRICING_UNAVAILABLE" },
+      { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }
 
 /** Admin-only write. */
