@@ -16,17 +16,19 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function TimeSlotPicker({ date, selectedSlot, onSelect }: Props) {
   const { isRtl, t, lang } = useLanguage();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const [loading, setLoading] = useState(false);
+  const dateStr = format(date, "yyyy-MM-dd");
+  const [loadedDate, setLoadedDate] = useState("");
+  const loading = loadedDate !== dateStr;
 
   useEffect(() => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/slots?date=${dateStr}`)
       .then((r) => r.json())
-      .then((data) => setSlots(Array.isArray(data) ? data : []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [date]);
+      .then((data) => { if (!cancelled) setSlots(Array.isArray(data) ? data : []); })
+      .catch(() => { if (!cancelled) setSlots([]); })
+      .finally(() => { if (!cancelled) setLoadedDate(dateStr); });
+    return () => { cancelled = true; };
+  }, [dateStr]);
 
   if (loading) {
     return (

@@ -24,6 +24,8 @@ export interface Appointment {
   notes: string | null;
   stripe_session_id: string | null;
   payment_reference: string | null;
+  payment_checkout_url?: string | null;
+  payment_checkout_expires_at?: string | null;
   payment_provider: PaymentProvider;
   payment_status: PaymentStatus;
   payment_expires_at: string | null;

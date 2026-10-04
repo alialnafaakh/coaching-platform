@@ -17,7 +17,7 @@ Daily and Resend configuration is unchanged.
 
 ## Vercel production configuration
 
-- Change `WAYL_ENV` from `test` to `live`.
+- Verify the existing Production `WAYL_ENV=live`; do not recreate it based on an incomplete connector view.
 - Bind `WAYL_API_TOKEN` to the merchant credential authorized for live link creation.
   If the existing merchant token supports both modes, it need not be replaced.
 - Configure `WAYL_WEBHOOK_SECRET` for the live integration; use the same secret for
@@ -103,14 +103,23 @@ Confirmation and consultation links require both a paid database state and a con
 polling stops at paid confirmation or cancellation. No manual consultant approval is required: the verified webhook confirms the
 appointment and invokes the existing invitation email immediately. The obsolete admin
 confirmation action is disabled; session start/end and email resend remain available.
-Email delivery errors do not undo payment or confirmation. The existing atomic email
-claim prevents concurrent/repeated webhook deliveries from sending duplicate invitations;
-failed email attempts release the claim so later webhook retries can try again.
+Email delivery errors do not undo payment or confirmation. Payment confirmation and an
+invitation outbox job commit in one server-only database transaction. Leased jobs use
+one stable Resend idempotency key; the sent timestamp is written only after provider
+acceptance. Interrupted sends retry with that same key. Jobs older than 23 hours since
+the first attempt, or with five attempts, stop for manual review rather than risk duplicate
+email beyond Resend's 24-hour idempotency window. Explicit admin resends are separate
+intentional deliveries and require a paid confirmed/in-progress booking.
+
+The daily Vercel cron at 03:00 UTC requires a Production `CRON_SECRET` of at least
+32 characters. It processes at most ten jobs per run. On a daily schedule some failed
+jobs can reach the safety window before retry; a human must review those jobs. A more
+frequent cron requires an eligible Vercel plan and separate scheduling approval.
 
 ## Validation without payment requests
 
-Run `node --test tests/wayl.test.cjs`, `node node_modules/typescript/bin/tsc --noEmit --incremental false`,
-and `npm run build`. Tests use synthetic configuration and in-memory mocks, never
+Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+Tests use synthetic configuration, HTTP/provider mocks, and isolated PostgreSQL, never
 load `.env.local`, and cannot contact Wayl, Supabase or Resend. Mock rates are fixture
 values only; they do not configure the application. Real checkout remains blocked
 until the merchant supplies a valid exchange rate and a public HTTPS callback origin.

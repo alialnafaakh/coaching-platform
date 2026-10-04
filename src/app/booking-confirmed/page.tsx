@@ -19,7 +19,8 @@ function BookingConfirmedContent() {
 
   const [appointment, setAppointment] = useState<PublicAppointment | null>(null);
   const [loading, setLoading] = useState(Boolean(id && token));
-  const [error, setError] = useState("");
+  const [requestError, setError] = useState("");
+  const error = !id || !token ? t("booking_missing_access") : requestError;
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -47,16 +48,11 @@ function BookingConfirmedContent() {
 
   useEffect(() => {
     if (!id || !token) {
-      setError(t("booking_missing_access"));
-      setLoading(false);
       return;
     }
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    setLoading(true);
-    setAppointment(null);
-    setError("");
     // Browser return is informational. Only read database state; the webhook
     // owns payment confirmation. Poll while the hold is still pending.
     const load = () => fetch(`/api/bookings/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`, { cache: "no-store" })

@@ -131,6 +131,8 @@ export async function prepareCmsImage(file: File | null): Promise<PrepareCmsImag
       extension = "webp";
     }
 
+    if (buffer.byteLength > MAX_UPLOAD_BYTES) return { ok: false, error: "file_too_large" };
+
     // Confirm oriented output still within limits.
     const outMeta = await sharp(buffer, {
       failOn: "error",

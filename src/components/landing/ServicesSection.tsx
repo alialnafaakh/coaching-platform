@@ -4,45 +4,6 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 
-const services = [
-  {
-    icon: "🧠",
-    title: "Biopsychosocial Assessment",
-    description:
-      "We begin by mapping the full picture — your nervous system patterns, your relational history, and the social forces shaping your connections today.",
-  },
-  {
-    icon: "💞",
-    title: "Couples & Partnership Coaching",
-    description:
-      "For partners ready to break old cycles. We work on communication, repair, and building a secure attachment — together.",
-  },
-  {
-    icon: "🌱",
-    title: "Individual Relationship Coaching",
-    description:
-      "For those navigating loneliness, dating, divorce, or the aftermath of a difficult relationship. You don't have to figure it out alone.",
-  },
-  {
-    icon: "🔄",
-    title: "Pattern Interruption",
-    description:
-      "Deep-rooted patterns live in the body. Somatic-informed techniques help you notice, interrupt, and rewire reactive cycles at the source.",
-  },
-  {
-    icon: "🗣️",
-    title: "Communication Mastery",
-    description:
-      "Learn to express needs clearly, listen without defensiveness, and have the conversations you've been avoiding — with skill and care.",
-  },
-  {
-    icon: "🛡️",
-    title: "Boundaries & Self-worth",
-    description:
-      "Understand why boundaries collapse — and rebuild them from a place of self-respect, not fear. Healthy limits are an act of love.",
-  },
-];
-
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function ServicesSection({ title = "What We Work On" }: { title?: string }) {

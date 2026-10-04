@@ -48,12 +48,13 @@ export function validateConsultationSettings(input: {
     };
   }
 
-  if (base === null || base < 0) {
-    return { error: "Base price must be a non-negative number." };
+  if (base === null || base <= 0) {
+    return { error: "Base price must be positive." };
   }
 
-  if (discount === null || discount < 0 || discount > 100) {
-    return { error: "Discount must be between 0 and 100." };
+  if (discount === null || discount < 0 || discount >= 100 ||
+      calculateFinalPrice(base, discount) <= 0) {
+    return { error: "Discount must leave a positive session price." };
   }
 
   return {
@@ -64,13 +65,13 @@ export function validateConsultationSettings(input: {
 }
 
 function rowToSettings(row: Record<string, unknown> | null | undefined): ConsultationSettings {
-  if (!row) return { ...DEFAULT_CONSULTATION_SETTINGS };
+  if (!row) throw new Error("PRICING_UNAVAILABLE");
   const validated = validateConsultationSettings({
     session_duration_minutes: row.session_duration_minutes,
     base_price_usd: row.base_price_usd,
     discount_percent: row.discount_percent,
   });
-  if ("error" in validated) return { ...DEFAULT_CONSULTATION_SETTINGS };
+  if ("error" in validated) throw new Error("PRICING_UNAVAILABLE");
   return validated;
 }
 
@@ -85,11 +86,11 @@ export async function getConsultationSettings(
       .maybeSingle();
 
     if (error || !data) {
-      return { ...DEFAULT_CONSULTATION_SETTINGS };
+      throw new Error("PRICING_UNAVAILABLE");
     }
     return rowToSettings(data as Record<string, unknown>);
   } catch {
-    return { ...DEFAULT_CONSULTATION_SETTINGS };
+    throw new Error("PRICING_UNAVAILABLE");
   }
 }
 
@@ -107,7 +108,7 @@ export async function saveConsultationSettings(
 
   const { error } = await db.from("consultation_settings").upsert(payload, { onConflict: "id" });
   if (error) {
-    console.error("consultation_settings upsert error:", error);
+    console.error("PRICING_SAVE_UNAVAILABLE");
     return {
       error:
         error.message.includes("consultation_settings") || error.code === "42P01"

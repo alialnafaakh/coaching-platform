@@ -5,19 +5,24 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "cmdkxxkstberbqcnhdjd.supabase.co",
+        pathname: "/storage/v1/object/public/images/**",
       },
     ],
   },
   async headers() {
     return [
+      { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      ...["/booking-confirmed", "/consultation/:path*", "/review/:path*"].map((source) => ({
+        source, headers: [{ key: "Cache-Control", value: "no-store" }, { key: "Referrer-Policy", value: "no-referrer" }],
+      })),
       {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           {
             key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
+            value: "no-referrer",
           },
           { key: "X-Frame-Options", value: "DENY" },
           {

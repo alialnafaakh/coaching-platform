@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
   // Admin/unfiltered slot listing requires a valid admin session.
   if (wantsAdmin) {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!isAdminSession(session)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
@@ -43,8 +44,7 @@ export async function GET(req: NextRequest) {
   const db = getSupabaseAdmin();
   try {
     await expireExpiredHolds(db);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query: any = db
+    let query = db
       .from("time_slots")
       .select("*")
       .order("date", { ascending: true })
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      console.error("Supabase fetch error:", error);
+      console.error("SERVER_OPERATION_FAILED");
       return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });
     }
 
@@ -67,15 +67,16 @@ export async function GET(req: NextRequest) {
         );
 
     return NextResponse.json(rows);
-  } catch (err) {
-    console.error("Unexpected error during Supabase fetch:", err);
+  } catch {
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json({ error: "Unable to load available times." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdminSession(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const db = getSupabaseAdmin();
@@ -130,8 +131,8 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await db.from("time_slots").insert(toInsert).select();
     if (error) {
-      console.error("Supabase insert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("SERVER_OPERATION_FAILED");
+      return NextResponse.json({ error: "Unable to complete the request." }, { status: 500 });
     }
 
     return NextResponse.json(
@@ -142,16 +143,17 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (err: unknown) {
-    console.error("Unexpected error during Supabase insert:", err);
-    const message = err instanceof Error ? err.message : "Unexpected error";
+  } catch {
+    console.error("SERVER_OPERATION_FAILED");
+    const message = "Unable to complete the request.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdminSession(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
@@ -177,7 +179,7 @@ export async function DELETE(req: NextRequest) {
     .in("id", ids);
 
   if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    return NextResponse.json({ error: "Unable to complete the request." }, { status: 500 });
   }
 
   const deletable = (slots || []).filter((slot) => !slot.is_booked).map((slot) => slot.id);
@@ -191,6 +193,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   const { error } = await db.from("time_slots").delete().in("id", deletable);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Unable to complete the request." }, { status: 500 });
   return NextResponse.json({ success: true, deleted: deletable.length, blocked });
 }

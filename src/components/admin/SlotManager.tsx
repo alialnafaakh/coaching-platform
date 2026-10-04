@@ -52,7 +52,6 @@ export default function SlotManager() {
   );
 
   const fetchSlots = async () => {
-    setLoading(true);
     try {
       const res = await fetch("/api/slots?admin=true");
       const data = await res.json();

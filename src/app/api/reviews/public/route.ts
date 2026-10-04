@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         language: lang,
-        reviews: page.map(({ created_at: _c, ...pub }) => pub),
+        reviews: page.map(row => { const pub = { ...row }; delete (pub as Partial<typeof row>).created_at; return pub; }),
         average_rating: summary.average_rating,
         review_count: summary.review_count,
         total_approved: all.length,
@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
       },
       { headers: NO_STORE }
     );
-  } catch (err) {
-    console.error("Public reviews fetch error:", err instanceof Error ? err.name : "Error");
+  } catch {
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json(
       { error: "Unable to load reviews." },
       { status: 500, headers: NO_STORE }

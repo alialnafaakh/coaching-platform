@@ -48,7 +48,7 @@ function setup(overrides = {}, envOverrides = {}) {
   }, { warn: code => state.diagnostics.push(code) });
   const quote = wayl.quoteWaylPayment(50, 100, env.WAYL_ENV === 'live' ? 'live' : 'test'); // Synthetic fixture rate, never local configuration.
   state.appointments = [{
-    id: '11111111-1111-4111-8111-111111111111', slot_id: 'slot-1', join_token: 'synthetic-join',
+    id: '11111111-1111-4111-8111-111111111111', slot_id: '22222222-2222-4222-8222-222222222222', join_token: 'synthetic-join',
     status: 'pending_payment', payment_status: 'unpaid', final_price_usd: 50,
     client_name: 'Test Customer', client_email: 'customer@example.test',
     consultation_email_sent_at: null, consultation_email_last_error: null,
@@ -57,8 +57,54 @@ function setup(overrides = {}, envOverrides = {}) {
     payment_expires_at: new Date(Date.now() + 900000).toISOString(),
     payment_reference: quote.referenceId, payment_provider: 'wayl', ...overrides,
   }];
-  state.time_slots = [{ id: 'slot-1', is_booked: true }];
-  const db = { from(table) {
+  state.time_slots = [{ id: '22222222-2222-4222-8222-222222222222', is_booked: true }];
+  state.jobs = [];
+  const db = { async rpc(name, p = {}) {
+    const a = state.appointments[0];
+    const write = patch => { Object.assign(a, patch); state.writes.push({ table: 'appointments', patch }); };
+    if (name === 'reserve_booking') {
+      if (state.time_slots[0].is_booked) return { data: { error: 'slot_unavailable' }, error: null };
+      const cfg = state.consultation_settings[0];
+      const row = { id: '11111111-1111-4111-8111-111111111111', slot_id: p.p_slot_id,
+        client_name: p.p_client_name, client_email: p.p_client_email, notes: p.p_notes,
+        join_token: p.p_join_token, status: 'pending_payment', payment_status: 'unpaid',
+        payment_reference: null, payment_provider: null, consultation_email_sent_at: null,
+        ...p.p_expected_settings, final_price_usd: Math.round(Number(cfg.base_price_usd)*(1-Number(cfg.discount_percent)/100)*100)/100,
+        payment_expires_at: new Date(Date.now()+900000).toISOString(),time_slots: {...state.time_slots[0]} };
+      state.appointments.push(row); state.time_slots[0].is_booked=true;
+      return {data:{appointment:row},error:null};
+    }
+    if (name === 'expire_booking_holds') {
+      state.beforeQuery?.({table:'appointments',patch:{payment_status:'failed'},state});
+      if (a?.status==='pending_payment' && a.payment_status==='unpaid' && new Date(a.payment_expires_at)<new Date()) {
+        write({status:'cancelled',payment_status:'failed'});state.time_slots[0].is_booked=false;
+      }
+      return {data:0,error:null};
+    }
+    if (name === 'finalize_wayl_payment') {
+      const duplicate=a.payment_status==='paid';
+      if (!duplicate) {
+        const status=a.status==='pending_payment' ? (new Date(a.payment_expires_at)>new Date()?'confirmed':'cancelled'):a.status;
+        write({payment_status:'paid',status});
+        state.time_slots[0].is_booked=state.appointments.some(row=>['pending_payment','confirmed','in_progress'].includes(row.status));
+        if (['confirmed','in_progress'].includes(status) && !a.consultation_email_sent_at) state.jobs.push({id:'synthetic-job',appointment_id:a.id,status:'pending'});
+      }
+      return {data:{id:a.id,status:a.status,duplicate,manualReview:a.status==='cancelled'},error:null};
+    }
+    if (name === 'queue_consultation_email') return {data:state.jobs[0]?.id || null,error:null};
+    if (name === 'claim_consultation_email') {
+      const job=state.jobs.find(j=>j.id===p.p_job_id);
+      if (!job || job.status!=='pending') return {data:null,error:null};
+      job.status='processing';job.lease_token='synthetic-lease';return {data:{...job},error:null};
+    }
+    if (name === 'finish_consultation_email') {
+      const job=state.jobs.find(j=>j.id===p.p_job_id);
+      if (p.p_provider_id) {job.status='sent';write({consultation_email_sent_at:new Date().toISOString(),consultation_email_last_error:null});}
+      else {job.status=p.p_skipped?'skipped':'pending';if(!p.p_skipped) write({consultation_email_last_error:'EMAIL_DELIVERY_UNAVAILABLE'});}
+      return {data:true,error:null};
+    }
+    throw new Error('Unexpected RPC '+name);
+  }, from(table) {
     assert.ok(['appointments', 'time_slots', 'consultation_settings'].includes(table));
     let patch = null, insert = null, single = false, cap = Infinity;
     const filters = [];
@@ -106,14 +152,16 @@ function setup(overrides = {}, envOverrides = {}) {
         if (state.emailFailure) return { error: { message: 'synthetic send failure' } };
         state.emails.add(message.to);
         state.emailMessages = [...(state.emailMessages || []), message];
-        return { error: null };
+        return { data: { id: 'synthetic-acceptance-id' }, error: null };
       } };
     } },
     '@/lib/consultationAccess': { resolveSessionDurationMinutes: appt => appt.session_duration_minutes },
   }, env);
+  const security = load('src/lib/serverSecurity.ts', {}, env);
   const imports = {
+    '@/lib/serverSecurity': security,
     'next/server': { NextResponse: Response }, '@/lib/wayl': wayl,
-    'next-auth': { async getServerSession() { return { role: 'admin' }; } },
+    'next-auth': { async getServerSession() { return state.session ?? { role: 'admin' }; } },
     '@/lib/auth': { authOptions: {} },
     '@/lib/bookings': bookings, '@/lib/supabase': { getSupabaseAdmin() { state.dbCalls = (state.dbCalls || 0) + 1; return db; } },
     '@/lib/consultationEmail': email,
@@ -159,7 +207,7 @@ test('checkout uses the existing snapshot/hold, official TEST body and returned 
   for (const k of Object.keys(before).filter(k => !['payment_reference', 'payment_provider'].includes(k))) {
     assert.equal(s.state.appointments[0][k], before[k]);
   }
-  assert.deepEqual(s.state.time_slots, [{ id: 'slot-1', is_booked: true }]);
+  assert.deepEqual(s.state.time_slots, [{ id: '22222222-2222-4222-8222-222222222222', is_booked: true }]);
 });
 
 test('invalid/missing rate and unsupported mode fail before mutation or network', async () => {
@@ -286,7 +334,7 @@ test('late payment stays cancelled/paid for review, never rebooks or sends consu
   assert.equal((await s.event()).status, 200);
   assert.equal(s.state.appointments[0].payment_status, 'paid');
   const rebooked = setup({ status: 'cancelled', payment_status: 'failed' });
-  rebooked.state.appointments.push({ id: 'other', slot_id: 'slot-1', status: 'confirmed' });
+  rebooked.state.appointments.push({ id: 'other', slot_id: '22222222-2222-4222-8222-222222222222', status: 'confirmed' });
   assert.equal((await rebooked.event()).status, 200);
   assert.equal(rebooked.state.time_slots[0].is_booked, true);
   assert.equal(rebooked.state.writes.filter(w => w.table === 'time_slots').length, 0);
@@ -387,10 +435,10 @@ test('failed payments cannot confirm or email; unpaid admin resend is rejected',
 test('first checkout: available slot -> configured-price hold -> TEST link -> signed payment -> confirmation and email', async () => {
   const s = setup();
   s.state.appointments = [];
-  s.state.time_slots = [{ id: 'slot-1', is_booked: false, date: '2026-10-02', start_time: '12:00:00', end_time: '12:40:00' }];
+  s.state.time_slots = [{ id: '22222222-2222-4222-8222-222222222222', is_booked: false, date: '2026-10-02', start_time: '12:00:00', end_time: '12:40:00' }];
   s.state.consultation_settings = [{ id: 1, session_duration_minutes: 40, base_price_usd: '83.50', discount_percent: '20.00' }];
   const submit = () => s.createBooking(new Request('https://example.test/api/bookings', {
-    method: 'POST', body: JSON.stringify({ slot_id: 'slot-1', date: '2026-10-02',
+    method: 'POST', body: JSON.stringify({ slot_id: '22222222-2222-4222-8222-222222222222', date: '2026-10-02',
       start_time: '12:00:00', client_name: 'Test Customer', client_email: 'customer@example.test' }),
   }));
   const booking = await submit();
@@ -512,4 +560,27 @@ test('LIVE webhook cannot confirm an old TEST reference even when event omits en
   assert.equal((await s.event()).status, 409);
   assert.equal(s.state.writes.length, 0);
   assert.equal(s.state.emails.size, 0);
+});
+
+
+test('admin approval endpoint rejects ordinary authenticated sessions', async () => {
+  const s=setup(); s.state.session={user:{name:'Ordinary user'},role:'customer'};
+  assert.equal((await s.requestAdminConfirm()).status,401);
+  assert.equal(s.state.writes.length,0);
+});
+test('oversized and malformed checkout requests cannot mutate or contact Wayl', async () => {
+  const env={}; const security=load('src/lib/serverSecurity.ts',{},env);
+  await assert.rejects(security.boundedJson(new Request('https://example.test',{method:'POST',body:'x'.repeat(20000)})));
+  await assert.rejects(security.boundedJson(new Request('https://example.test',{method:'POST',body:'[]'})));
+});
+test('admin role, same-origin writes and cron authorization fail closed', () => {
+  const security=load('src/lib/serverSecurity.ts',{}, { CRON_SECRET:'synthetic-secret-'.repeat(3) });
+  for(const s of [null,{}, {user:{}}, {role:'customer'}]) assert.equal(security.isAdminSession(s),false);
+  assert.equal(security.isAdminSession({role:'admin'}),true);
+  for(const headers of [{},{origin:'https://evil.test'},{origin:'https://example.test','sec-fetch-site':'cross-site'}]) {
+    assert.equal(security.isSameOrigin(new Request('https://example.test/api',{headers})),false);
+  }
+  assert.equal(security.isSameOrigin(new Request('https://example.test/api',{headers:{origin:'https://example.test'}})),true);
+  assert.equal(security.authorizedCron(new Request('https://example.test/api')),false);
+  assert.equal(security.authorizedCron(new Request('https://example.test/api',{headers:{authorization:'Bearer '+'synthetic-secret-'.repeat(3)}})),true);
 });

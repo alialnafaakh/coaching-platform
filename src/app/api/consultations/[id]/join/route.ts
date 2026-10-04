@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -25,9 +26,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   const session = await getServerSession(authOptions);
-  const isAdmin = Boolean(session);
+  const isAdmin = isAdminSession(session);
 
   let body: Record<string, unknown> = {};
   try {
@@ -59,6 +61,8 @@ export async function POST(
     return NextResponse.json({ error: "not_found", message: "Appointment not found." }, { status: 404 });
   }
 
+  if (appt.payment_status !== "paid") return NextResponse.json(
+    { error: "payment_required", message: "Verified payment is required for this consultation." }, { status: 403 });
   const row = appt as ApptRow;
 
   if (!isAdmin) {
@@ -91,25 +95,6 @@ export async function POST(
   try {
     let room = await ensureDailyRoom(row.room_id, row.id);
 
-    // TEMP diagnostic (safe): room metadata only — never tokens.
-    const nowSec = Math.floor(Date.now() / 1000);
-    console.info("Consultation join room metadata", {
-      appointmentId: row.id,
-      roomName: room.name,
-      roomHost: (() => {
-        try {
-          return new URL(room.url).host;
-        } catch {
-          return "invalid_url";
-        }
-      })(),
-      roomExp: room.exp ?? null,
-      roomExpired: typeof room.exp === "number" ? room.exp <= nowSec : null,
-      hasStoredRoomId: Boolean(row.room_id),
-      appointmentStatus: row.status,
-      role: isAdmin ? "coach" : "customer",
-    });
-
     // Claim room_id only when still null to avoid clobbering a concurrent winner.
     if (!row.room_id) {
       const { data: claimed } = await db
@@ -141,24 +126,8 @@ export async function POST(
       }
     }
 
-    // First valid join: confirmed → in_progress, set started_at once (never overwrite).
-    if (row.status === "confirmed") {
-      await db
-        .from("appointments")
-        .update({
-          status: "in_progress",
-          started_at: row.started_at || new Date().toISOString(),
-        })
-        .eq("id", row.id)
-        .eq("status", "confirmed");
-    } else if (row.status === "in_progress" && !row.started_at) {
-      await db
-        .from("appointments")
-        .update({ started_at: new Date().toISOString() })
-        .eq("id", row.id)
-        .eq("status", "in_progress")
-        .is("started_at", null);
-    }
+    const { data: started, error: startError } = await db.rpc("start_paid_consultation", { p_appointment_id: row.id });
+    if (startError || !started) return NextResponse.json({ error: "Consultation is no longer available." }, { status: 409 });
 
     const userName = isAdmin ? "Maryem" : row.client_name || "Guest";
     const closesAt = Math.floor(new Date(window.joinClosesAtIso).getTime() / 1000);
@@ -187,12 +156,7 @@ export async function POST(
     });
   } catch (err) {
     // Do not log tokens or request bodies.
-    console.error(
-      "Consultation join error:",
-      err instanceof DailyApiError
-        ? { name: err.name, status: err.status, message: err.message }
-        : { name: err instanceof Error ? err.name : "Error" }
-    );
+    console.error("SERVER_OPERATION_FAILED");
     if (err instanceof DailyApiError) {
       const message =
         err.message.includes("not configured")

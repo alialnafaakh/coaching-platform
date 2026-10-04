@@ -1,3 +1,4 @@
+import { isAdminSession } from "@/lib/serverSecurity";
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -15,7 +16,7 @@ export default async function AdminProtectedLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     redirect("/admin/login");
   }
 

@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
@@ -24,7 +25,7 @@ export async function GET() {
     if (error.code === "PGRST116") {
       return NextResponse.json({ content: {} }, { headers: NO_STORE });
     }
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: "Unable to complete the request." }, { status: 500, headers: NO_STORE });
   }
 
   return NextResponse.json(
@@ -34,8 +35,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -54,7 +56,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
-      console.error("Supabase fetch error:", fetchError);
+      console.error("SERVER_OPERATION_FAILED");
       throw fetchError;
     }
 
@@ -65,7 +67,7 @@ export async function PUT(request: Request) {
         .eq("id", existing.id);
 
       if (updateError) {
-        console.error("Supabase update error:", updateError);
+        console.error("SERVER_OPERATION_FAILED");
         throw updateError;
       }
     } else {
@@ -74,7 +76,7 @@ export async function PUT(request: Request) {
         .insert([{ content }]);
 
       if (insertError) {
-        console.error("Supabase insert error:", insertError);
+        console.error("SERVER_OPERATION_FAILED");
         throw insertError;
       }
     }
@@ -82,9 +84,9 @@ export async function PUT(request: Request) {
     revalidatePath("/");
     revalidatePath("/api/content");
     return NextResponse.json({ success: true }, { headers: NO_STORE });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unable to save content.";
-    console.error("Error updating content:", message);
+  } catch {
+    const message = "Unable to save content.";
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

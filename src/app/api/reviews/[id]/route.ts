@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -24,8 +25,9 @@ type Ctx = { params: Promise<{ id: string }> };
  *   { is_featured: boolean }
  */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -124,9 +126,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 }
 
 /** Admin: delete a consultation_review only (never the appointment). */
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+export async function DELETE(req: NextRequest, ctx: Ctx) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -201,13 +201,6 @@ ${input.joinUrl}
   return { subject, html, text };
 }
 
-function safeEmailError(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message.slice(0, 300);
-  }
-  return "Unable to send consultation email.";
-}
-
 async function loadAppointmentForEmail(
   db: SupabaseClient,
   appointmentId: string
@@ -220,140 +213,90 @@ async function loadAppointmentForEmail(
     .eq("id", appointmentId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) throw new Error("EMAIL_APPOINTMENT_UNAVAILABLE");
+  if (!data) return null;
   return data as unknown as AppointmentEmailRow;
 }
 
-/**
- * Sends the secure consultation invitation to the appointment's stored client_email.
- * Never accepts a client-supplied recipient. Never logs join_token or the join URL.
- */
-export async function sendConsultationInvitationEmail(
-  db: SupabaseClient,
-  appointmentId: string,
-  options: { force?: boolean } = {}
+type EmailJob = {
+  id: string; appointment_id: string; lease_token: string; purpose: string;
+};
+
+export async function processConsultationEmailJob(
+  db: SupabaseClient, jobId: string
 ): Promise<SendConsultationEmailResult> {
-  const force = Boolean(options.force);
-  const appt = await loadAppointmentForEmail(db, appointmentId);
-  if (!appt) {
-    return { ok: false, error: "Appointment not found." };
+  const { data: claimed, error: claimError } = await db.rpc("claim_consultation_email", { p_job_id: jobId });
+  if (claimError) return { ok: false, error: "Unable to prepare invitation." };
+  if (!claimed) return { ok: true, skipped: true };
+  const job = claimed as EmailJob;
+  async function finish(providerId: string | null, skipped = false) {
+    const { data, error } = await db.rpc("finish_consultation_email", {
+      p_job_id: job.id, p_lease_token: job.lease_token, p_provider_id: providerId,
+      p_error_code: providerId ? null : "EMAIL_DELIVERY_UNAVAILABLE", p_skipped: skipped,
+    });
+    return !error && data === true;
   }
-
-  if (appt.payment_status !== "paid" ||
-      (appt.status !== "confirmed" && appt.status !== "in_progress")) {
-    return {
-      ok: false,
-      error: "Consultation email is only sent for paid, confirmed appointments.",
-      skipped: true,
-    };
-  }
-
-  if (!force && appt.consultation_email_sent_at) {
-    return { ok: true, skipped: true };
-  }
-
-  if (!appt.client_email || !appt.join_token || !appt.time_slots?.date || !appt.time_slots?.start_time) {
-    const error = "Appointment is missing email or schedule details.";
-    await db
-      .from("appointments")
-      .update({ consultation_email_last_error: error })
-      .eq("id", appointmentId);
-    return { ok: false, error };
-  }
-
-  if (!force) {
-    const claimAt = new Date().toISOString();
-    const { data: claimed, error: claimError } = await db
-      .from("appointments")
-      .update({
-        consultation_email_sent_at: claimAt,
-        consultation_email_last_error: null,
-      })
-      .eq("id", appointmentId)
-      .is("consultation_email_sent_at", null)
-      .in("status", ["confirmed", "in_progress"])
-      .eq("payment_status", "paid")
-      .select("id")
-      .maybeSingle();
-
-    if (claimError) {
-      console.error("Consultation email claim failed", {
-        appointmentId,
-        message: claimError.message,
-      });
-      return { ok: false, error: "Unable to prepare consultation email." };
-    }
-
-    if (!claimed) {
+  try {
+    const appt = await loadAppointmentForEmail(db, job.appointment_id);
+    if (!appt || appt.payment_status !== "paid" || !["confirmed", "in_progress"].includes(appt.status)) {
+      if (!await finish(null, true)) throw new Error("EMAIL_FINISH_FAILED");
       return { ok: true, skipped: true };
     }
-  }
-
-  try {
-    const joinUrl = buildConsultationJoinUrl(appointmentId, appt.join_token);
-    const lang = resolveEmailLang(appt.client_name);
-    const durationMinutes = resolveSessionDurationMinutes(appt, appt.time_slots);
-    const content = buildEmailContent({
-      lang,
-      clientName: appt.client_name,
-      date: appt.time_slots.date,
-      startTime: appt.time_slots.start_time,
-      durationMinutes,
-      priceLabel: formatPrice(appt.final_price_usd),
-      joinUrl,
-    });
-
-    const resend = new Resend(getResendApiKey());
-    const { error } = await resend.emails.send({
-      from: getEmailFrom(),
-      to: appt.client_email,
-      replyTo: getEmailReplyTo(),
-      subject: content.subject,
-      html: content.html,
-      text: content.text,
-    });
-
-    if (error) {
-      throw new Error(error.message || "Resend rejected the email.");
+    if (!appt.client_email || !appt.join_token || !appt.time_slots?.date || !appt.time_slots.start_time) {
+      throw new Error("EMAIL_DETAILS_UNAVAILABLE");
     }
-
-    await db
-      .from("appointments")
-      .update({
-        consultation_email_sent_at: new Date().toISOString(),
-        consultation_email_last_error: null,
-      })
-      .eq("id", appointmentId);
-
-    return { ok: true };
-  } catch (err) {
-    const message = safeEmailError(err);
-    console.error("Consultation email send failed", {
-      appointmentId,
-      message,
+    const content = buildEmailContent({
+      lang: resolveEmailLang(appt.client_name), clientName: appt.client_name,
+      date: appt.time_slots.date, startTime: appt.time_slots.start_time,
+      durationMinutes: resolveSessionDurationMinutes(appt, appt.time_slots),
+      priceLabel: formatPrice(appt.final_price_usd),
+      joinUrl: buildConsultationJoinUrl(appt.id, appt.join_token),
     });
-    await db
-      .from("appointments")
-      .update({
-        consultation_email_sent_at: force ? appt.consultation_email_sent_at : null,
-        consultation_email_last_error: message,
-      })
-      .eq("id", appointmentId);
-    return { ok: false, error: message };
+    const resend = new Resend(getResendApiKey());
+    const { data, error } = await resend.emails.send({
+      from: getEmailFrom(), to: appt.client_email, replyTo: getEmailReplyTo(),
+      subject: content.subject, html: content.html, text: content.text,
+    }, { idempotencyKey: "consultation/" + job.id });
+    if (error || !data?.id) throw new Error("EMAIL_PROVIDER_UNAVAILABLE");
+    if (!await finish(data.id)) {
+      // Retain the lease/job: retry uses the SAME provider key after interruption.
+      console.error("EMAIL_ACCEPTANCE_PERSIST_FAILED");
+      return { ok: false, error: "Invitation delivery is pending verification." };
+    }
+    return { ok: true };
+  } catch {
+    console.error("EMAIL_DELIVERY_UNAVAILABLE");
+    await finish(null);
+    return { ok: false, error: "Invitation delivery is queued for retry." };
   }
 }
 
-/** Fire-and-forget safe wrapper for confirm transitions (never throws). */
-export async function notifyConsultationConfirmed(
-  db: SupabaseClient,
-  appointmentId: string
-): Promise<void> {
-  try {
-    await sendConsultationInvitationEmail(db, appointmentId, { force: false });
-  } catch (err) {
-    console.error("Consultation email notify failed", {
-      appointmentId,
-      message: safeEmailError(err),
-    });
+export async function sendConsultationInvitationEmail(
+  db: SupabaseClient, appointmentId: string, options: { force?: boolean } = {}
+): Promise<SendConsultationEmailResult> {
+  const appt = await loadAppointmentForEmail(db, appointmentId);
+  if (!appt || appt.payment_status !== "paid" || !["confirmed", "in_progress"].includes(appt.status)) {
+    return { ok: false, error: "Consultation email requires a paid, confirmed booking.", skipped: true };
   }
+  const { data: jobId, error } = await db.rpc("queue_consultation_email", {
+    p_appointment_id: appointmentId, p_force: Boolean(options.force),
+  });
+  if (error) return { ok: false, error: "Unable to queue invitation." };
+  if (!jobId) return { ok: true, skipped: true };
+  return processConsultationEmailJob(db, jobId);
+}
+
+export async function notifyConsultationConfirmed(db: SupabaseClient, appointmentId: string): Promise<void> {
+  try { await sendConsultationInvitationEmail(db, appointmentId); }
+  catch { console.error("EMAIL_NOTIFY_UNAVAILABLE"); }
+}
+
+export async function retryConsultationEmails(db: SupabaseClient): Promise<{ processed: number; failed: number }> {
+  const { data, error } = await db.from("consultation_email_jobs").select("id")
+    .in("status", ["pending", "processing"]).lte("next_attempt_at", new Date().toISOString())
+    .order("next_attempt_at").limit(10);
+  if (error) throw new Error("EMAIL_QUEUE_UNAVAILABLE");
+  let failed = 0;
+  for (const job of data || []) if (!(await processConsultationEmailJob(db, job.id)).ok) failed++;
+  return { processed: (data || []).length, failed };
 }

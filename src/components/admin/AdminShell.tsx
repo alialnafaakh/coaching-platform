@@ -58,13 +58,13 @@ function Brand() {
 
 function SignOutLink({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <a
+    <Link
       href="/api/auth/signout"
       onClick={onNavigate}
       className="block px-3 py-2.5 rounded-xl text-xs text-white/40 hover:text-white/70 transition-colors"
     >
       Sign out ↗
-    </a>
+    </Link>
   );
 }
 
@@ -72,10 +72,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close drawer on route change (covers programmatic navigation too).
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  const [drawerPath, setDrawerPath] = useState(pathname);
+  if (drawerPath !== pathname) { setDrawerPath(pathname); setOpen(false); }
 
   // Lock body scroll while mobile drawer is open.
   useEffect(() => {

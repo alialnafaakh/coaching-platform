@@ -43,20 +43,17 @@ function CustomerConsultationInner() {
   const token = searchParams.get("token") || "";
   const { isRtl, t, lang } = useLanguage();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(id && token));
   const [joining, setJoining] = useState(false);
-  const [error, setError] = useState("");
+  const [requestError, setError] = useState("");
+  const error = !id || !token ? t("booking_missing_access") : requestError;
   const [access, setAccess] = useState<AccessPayload | null>(null);
   const [join, setJoin] = useState<JoinPayload | null>(null);
 
   const loadAccess = useCallback(async () => {
     if (!id || !token) {
-      setError(t("booking_missing_access"));
-      setLoading(false);
       return;
     }
-    setLoading(true);
-    setError("");
     try {
       const res = await fetch(
         `/api/consultations/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`
@@ -74,7 +71,8 @@ function CustomerConsultationInner() {
   }, [id, token, t]);
 
   useEffect(() => {
-    loadAccess();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- State changes only after the fetch promise settles.
+    void loadAccess();
   }, [loadAccess]);
 
   const handleJoin = async () => {

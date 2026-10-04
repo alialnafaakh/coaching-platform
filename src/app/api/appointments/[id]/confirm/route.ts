@@ -1,3 +1,4 @@
+import { isAdminSession } from "@/lib/serverSecurity";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Keep an explicit response for stale clients; session start/end routes are separate.
 export async function POST() {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return NextResponse.json(

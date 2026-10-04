@@ -43,8 +43,6 @@ export default function AdminConsultationPage() {
 
   const loadAccess = useCallback(async () => {
     if (!id) return;
-    setLoading(true);
-    setError("");
     try {
       const res = await fetch(`/api/consultations/${encodeURIComponent(id)}`);
       const data = await res.json();
@@ -58,7 +56,8 @@ export default function AdminConsultationPage() {
   }, [id, t]);
 
   useEffect(() => {
-    loadAccess();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- State changes only after the fetch promise settles.
+    void loadAccess();
   }, [loadAccess]);
 
   const handleJoin = async () => {

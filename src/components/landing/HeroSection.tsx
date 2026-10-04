@@ -13,7 +13,7 @@ const floatingOrb: Variants = {
   },
 };
 
-export default function HeroSection({ content, availability = "Accepting New Clients" }: { content?: any; availability?: string }) {
+export default function HeroSection({ content, availability = "Accepting New Clients" }: { content?: { headline?: string; highlight?: string; subheadline?: string }; availability?: string }) {
   const { isRtl, t } = useLanguage();
   const [reduceMotion, setReduceMotion] = useState(false);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useInView, type Variants } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,7 +18,7 @@ function formatAverage(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-export default function AboutSection({ content }: { content?: any }) {
+export default function AboutSection({ content }: { content?: { imageUrl?: string; imageAlt?: string; statValue?: string; statLabel?: string; text1?: string; text2?: string } }) {
   const { isRtl, t, lang } = useLanguage();
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
@@ -95,7 +96,7 @@ export default function AboutSection({ content }: { content?: any }) {
             }}
           >
             {content?.imageUrl ? (
-              <img
+              <Image width={600} height={750} unoptimized
                 src={content.imageUrl}
                 alt={imageAlt}
                 className="w-full h-full object-cover"

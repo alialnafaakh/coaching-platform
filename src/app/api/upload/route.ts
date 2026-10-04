@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,8 +6,9 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import { prepareCmsImage } from "@/lib/imageUpload";
 
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("CMS image upload failed", { category: "storage_upload" });
+      console.error("SERVER_OPERATION_FAILED");
       return NextResponse.json({ error: "upload_failed" }, { status: 500 });
     }
 
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: publicUrl });
   } catch {
-    console.error("CMS image upload failed", { category: "unexpected" });
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json({ error: "upload_failed" }, { status: 500 });
   }
 }

@@ -1,159 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import {
-  expireExpiredHolds,
-  newJoinToken,
-  paymentExpiresAt,
-  toPublicAppointment,
-  validateCustomer,
-} from "@/lib/bookings";
-import {
-  calculateFinalPrice,
-  getConsultationSettings,
-} from "@/lib/consultationSettings";
-import { isIstanbulSlotStartInFuture } from "@/lib/consultationAccess";
-import {
-  enforceBookingIpRateLimit,
-  getClientIpFromRequest,
-} from "@/lib/rateLimit";
+import { newJoinToken, toPublicAppointment, validateCustomer } from "@/lib/bookings";
+import { getWaylCheckoutConfig, quoteWaylPayment } from "@/lib/wayl";
+import { calculateFinalPrice, getConsultationSettings } from "@/lib/consultationSettings";
+import { enforceBookingIpRateLimit, getClientIpFromRequest } from "@/lib/rateLimit";
+import { boundedJson, PRIVATE_HEADERS } from "@/lib/serverSecurity";
+import type { Appointment } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-function clientError(code: string, message: string, status: number) {
-  return NextResponse.json({ error: code, message }, { status });
+function failure(code: string, message: string, status: number) {
+  return NextResponse.json({ error: code, message }, { status, headers: PRIVATE_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return clientError("invalid_request", "Invalid booking request.", 400);
-  }
-
+  try { body = await boundedJson(req); }
+  catch { return failure("invalid_request", "Invalid booking request.", 400); }
   const customer = validateCustomer(body);
-  if ("error" in customer) {
-    return clientError("invalid_customer", customer.error, 400);
+  if ("error" in customer) return failure("invalid_customer", customer.error, 400);
+  if (typeof body.slot_id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.slot_id) ||
+      typeof body.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.date) ||
+      typeof body.start_time !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(body.start_time)) {
+    return failure("invalid_slot", "Please select a valid date and time.", 400);
   }
-
-  const slot_id = typeof body.slot_id === "string" ? body.slot_id : "";
-  const date = typeof body.date === "string" ? body.date : "";
-  const start_time = typeof body.start_time === "string" ? body.start_time : "";
-  const end_time = typeof body.end_time === "string" ? body.end_time : "";
-
-  if (!slot_id || !date || !start_time) {
-    return clientError("invalid_slot", "Please select a valid date and time.", 400);
+  const limit = await enforceBookingIpRateLimit(getClientIpFromRequest(req));
+  if (limit.action === "deny") return NextResponse.json({ error: "rate_limited", message: "Too many booking attempts." },
+    { status: 429, headers: { ...PRIVATE_HEADERS, "Retry-After": String(Math.max(1, limit.decision.retryAfterSeconds)) } });
+  if (limit.action === "skip" && (limit.reason !== "missing_ip" || process.env.VERCEL_ENV === "production")) {
+    return failure("temporarily_unavailable", "Booking is temporarily unavailable. Please try again later.", 503);
   }
-
-  // Rate limit before any slot reservation / appointment mutation.
-  // Fail-open on missing IP or limiter backend issues (atomic booking still protects inventory).
-  const ip = getClientIpFromRequest(req);
-  const limitResult = await enforceBookingIpRateLimit(ip);
-  if (limitResult.action === "deny") {
-    const retryAfter = Math.max(1, limitResult.decision.retryAfterSeconds || 1);
-    return NextResponse.json(
-      {
-        error: "rate_limited",
-        message: "Too many booking attempts. Please try again shortly.",
-      },
-      {
-        status: 429,
-        headers: { "Retry-After": String(retryAfter) },
-      }
-    );
-  }
-
-  const db = getSupabaseAdmin();
-
   try {
-    await expireExpiredHolds(db);
+    const db = getSupabaseAdmin();
     const settings = await getConsultationSettings(db);
-    const finalPrice = calculateFinalPrice(settings.base_price_usd, settings.discount_percent);
-
-    const { data: reserved, error: reserveError } = await db
-      .from("time_slots")
-      .update({ is_booked: true })
-      .eq("id", slot_id)
-      .eq("is_booked", false)
-      .select("id, date, start_time, end_time")
-      .maybeSingle();
-
-    if (reserveError) {
-      console.error("Slot reserve error:", reserveError);
-      return clientError("server_error", "Unable to complete your booking. Please try again.", 500);
-    }
-
-    if (!reserved) {
-      return clientError("slot_unavailable", "This time is no longer available.", 409);
-    }
-
-    const reservedDate = String(reserved.date);
-    const reservedStart = String(reserved.start_time).slice(0, 5);
-    const requestedStart = start_time.slice(0, 5);
-    if (reservedDate !== date || reservedStart !== requestedStart) {
-      await db.from("time_slots").update({ is_booked: false }).eq("id", slot_id);
-      return clientError("invalid_slot", "Please select a valid date and time.", 400);
-    }
-
-    // Same-day booking allowed; reject only once the Istanbul wall-clock start has passed.
-    if (!isIstanbulSlotStartInFuture(reservedDate, reservedStart)) {
-      await db.from("time_slots").update({ is_booked: false }).eq("id", slot_id);
-      return clientError(
-        "slot_in_past",
-        "This time has already passed. Please choose a later slot.",
-        409
-      );
-    }
-
-    const joinToken = newJoinToken();
-    const appointmentRow = {
-      slot_id,
-      client_name: customer.client_name,
-      client_email: customer.client_email,
-      notes: customer.notes,
-      status: "pending_payment",
-      payment_status: "unpaid",
-      payment_provider: null,
-      payment_reference: null,
-      payment_expires_at: paymentExpiresAt(),
-      join_token: joinToken,
-      room_id: null,
-      started_at: null,
-      ended_at: null,
-      session_duration_minutes: settings.session_duration_minutes,
-      base_price_usd: settings.base_price_usd,
-      discount_percent: settings.discount_percent,
-      final_price_usd: finalPrice,
-    };
-
-    const { data: created, error: insertError } = await db
-      .from("appointments")
-      .insert(appointmentRow)
-      .select("*, time_slots(*)")
-      .single();
-
-    if (insertError || !created) {
-      await db.from("time_slots").update({ is_booked: false }).eq("id", slot_id);
-      if (insertError?.code === "23505") {
-        return clientError("slot_unavailable", "This time is no longer available.", 409);
-      }
-      console.error("Appointment insert error:", insertError);
-      return clientError("server_error", "Unable to complete your booking. Please try again.", 500);
-    }
-
-    return NextResponse.json(
-      {
-        appointment: toPublicAppointment(created, {
-          date: reservedDate,
-          start_time: reserved.start_time,
-          end_time: end_time || reserved.end_time,
-        }),
-        token: joinToken,
-      },
-      { status: 201 }
-    );
-  } catch (err) {
-    console.error("Create booking error:", err);
-    return clientError("server_error", "Unable to complete your booking. Please try again.", 500);
+    const config = getWaylCheckoutConfig();
+    // Validate minimum charge before holding inventory; never calls Wayl here.
+    quoteWaylPayment(calculateFinalPrice(settings.base_price_usd, settings.discount_percent), config.rate, config.environment);
+    const token = newJoinToken();
+    const { data, error } = await db.rpc("reserve_booking", {
+      p_slot_id: body.slot_id, p_date: body.date, p_start_time: body.start_time,
+      p_client_name: customer.client_name, p_client_email: customer.client_email,
+      p_notes: customer.notes, p_join_token: token, p_expected_settings: settings,
+    });
+    if (error) { console.error("SERVER_OPERATION_FAILED"); return failure("server_error", "Unable to reserve this time.", 503); }
+    if (!data?.appointment) return failure(data?.error || "slot_unavailable", "This time or pricing has changed. Please refresh and try again.", 409);
+    return NextResponse.json({ appointment: toPublicAppointment(data.appointment as Appointment), token },
+      { status: 201, headers: PRIVATE_HEADERS });
+  } catch {
+    console.error("SERVER_OPERATION_FAILED");
+    return failure("server_error", "Booking is temporarily unavailable. Please contact support.", 503);
   }
 }

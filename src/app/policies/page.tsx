@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -199,20 +199,17 @@ const policies = {
   ],
 };
 
+function subscribeHash(notify: () => void) {
+  window.addEventListener("hashchange", notify);
+  return () => window.removeEventListener("hashchange", notify);
+}
 export default function PoliciesPage() {
   const { isRtl } = useLanguage();
   const content = isRtl ? policies.ar : policies.en;
-  const [activeTab, setActiveTab] = useState(0);
+  const [selectedTab, setActiveTab] = useState<number | null>(null);
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash.slice(1), () => "");
+  const activeTab = selectedTab ?? Math.max(0, content.findIndex(p => p.id === hash));
   const [openSection, setOpenSection] = useState<number | null>(null);
-
-  // Switch to correct tab when navigating via hash link (e.g. /policies#cancellation)
-  useEffect(() => {
-    const hash = window.location.hash.replace("#", "");
-    if (hash) {
-      const idx = content.findIndex((p) => p.id === hash);
-      if (idx !== -1) setActiveTab(idx);
-    }
-  }, []);
 
   const active = content[activeTab];
 

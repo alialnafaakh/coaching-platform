@@ -32,7 +32,6 @@ export default function AdminReviewsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchReviews = () => {
-    setLoading(true);
     fetch("/api/reviews", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {

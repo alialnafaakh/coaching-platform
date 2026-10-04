@@ -14,7 +14,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { mergeSiteContent } from "@/lib/siteContent";
 
 /** Fallback when DB has no row — never overrides present saved fields. */
-export const DEFAULT_CONTENT: any = {
+export const DEFAULT_CONTENT = {
   en: {
     general: { siteName: "Maryem", availability: "Accepting New Clients" },
     hero: {
@@ -81,7 +81,7 @@ export const DEFAULT_CONTENT: any = {
 
 export default function HomePage() {
   const { lang } = useLanguage();
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<(typeof DEFAULT_CONTENT) & { en: { testimonials?: [] }; ar: { testimonials?: [] } } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +89,7 @@ export default function HomePage() {
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
-        setContent(mergeSiteContent(DEFAULT_CONTENT, d.content));
+        setContent(mergeSiteContent(DEFAULT_CONTENT, d.content) as typeof DEFAULT_CONTENT);
       })
       .catch(() => {
         if (!cancelled) setContent(DEFAULT_CONTENT);

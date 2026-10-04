@@ -1,102 +1,63 @@
-# Maryem — Biopsychosocial Relationship Coaching Site
+# Maryem coaching website
 
-A full-stack Next.js coaching website with:
-- **Landing page** (Hero, About, Services, Testimonials, Pricing, CTA)
-- **Booking flow** (Date picker → Time slot → Contact form → pending payment hold)
-- **Admin dashboard** (Slot management + Appointment tracking)
-- **Supabase** (PostgreSQL) database
-- **NextAuth** credentials-based admin auth
+Canonical local repository: `C:\Users\anafa\Desktop\Maryem's site`.
+GitHub: `alialnafaakh/coaching-platform`. Vercel: `coaching-platform`.
+Production: https://biopsychosocial.site. Supabase: `cmdkxxkstberbqcnhdjd`.
+The OneDrive copy is not authoritative.
 
-Online payment (WayL) will be connected in a later phase. Bookings currently reserve a slot as `pending_payment` / `unpaid`.
+## Booking and payments
 
----
+Available slot → customer details → atomic 15-minute hold with a saved price → Wayl
+LIVE checkout → verified signed webhook → paid/confirmed → automatic invitation.
+Browser returns only read booking state. Admin approval cannot mark payments paid.
+Late verified payments stay cancelled/paid for manual review; they never take a
+replacement customer's slot. Payment references and checkout links are not cleared.
 
-## 🚀 Local Development
+Read [Wayl integration](docs/wayl-test-integration.md) for validation and recovery rules.
 
-```bash
-cd coaching-app
-npm install
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000)
+## Configuration
 
----
+Configure values securely outside Git. Server-only variables:
+`SUPABASE_SERVICE_ROLE_KEY`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_USERNAME`,
+`ADMIN_PASSWORD`, `RATE_LIMIT_SECRET`, `DAILY_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`,
+`EMAIL_REPLY_TO`, `WAYL_API_TOKEN`, `WAYL_WEBHOOK_SECRET`, `WAYL_ENV`,
+`WAYL_USD_TO_IQD_RATE`, `WAYL_CALLBACK_ORIGIN`, and `CRON_SECRET`.
+Public origins: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SITE_URL` (or the existing
+`NEXT_PUBLIC_APP_URL`). Production URLs must identify the canonical domain.
 
-## ⚙️ Environment Setup
+Keep the merchant-selected conversion rate. Verify existing Production `WAYL_ENV=live`
+and credentials rather than changing settings based on inaccessible connector metadata.
+The email retry cron requires a securely generated Production `CRON_SECRET` of at least
+32 characters; never use a password, publish it, or commit it.
 
-Copy `.env.local` and fill in all values:
+## Database history
 
-| Variable | Where to get it |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API |
-| `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Your Vercel URL (e.g. `https://maryem.vercel.app`) |
-| `ADMIN_USERNAME` | Your choice |
-| `ADMIN_PASSWORD` | Your choice |
-| `NEXT_PUBLIC_APP_URL` | Same as `NEXTAUTH_URL` |
+`supabase/migrations/20261004071138_production_reconciliation.sql` is the approved
+production reconciliation migration. It adds service-only transaction functions, the
+unique payment-reference index, validated positive-price/time constraints, an RLS
+invitation outbox, and image MIME/size limits. Repairs expire only unpaid pending holds
+and reconcile slot flags while protecting existing confirmed/in-progress unpaid rows.
+It preserves bookings, payment evidence, TEST references, and sent-email records.
 
----
+Historical root SQL files describe different earlier schemas and are not a fresh
+production installation sequence. Do not replay them on production. Verify the live
+schema and migration history before applying any future migration.
 
-## 🗄️ Database Setup (Supabase)
+## Development and verification
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor**
-3. Run the contents of `supabase-schema.sql`
-4. Copy your **Project URL** and **anon key** from Settings → API
+Run `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+Run `npm run dev` only with authorized secure local configuration. Unit and PostgreSQL
+tests do not contact Wayl, Supabase, Daily, or Resend and do not spend money.
 
----
+## Manual LIVE verification
 
-## 🚢 Deploy to Vercel
+After production deployment and configuration are verified, the merchant completes
+one legitimate payment manually using a new booking. Verify the signed webhook,
+paid/confirmed state, invitation acceptance, customer confirmation, and consultation
+join window. Do not simulate success in production or manually alter payment status.
+Keep the audit's existing active unpaid booking for manual review.
 
-1. Push to GitHub
-2. Import repo in [vercel.com](https://vercel.com)
-3. Add all environment variables in Vercel → Project → Settings → Environment Variables
-4. Deploy!
-
----
-
-## 🔑 Admin Dashboard
-
-Visit `/admin/login` (or click "Admin ↗" in the footer).
-
-Use the `ADMIN_USERNAME` and `ADMIN_PASSWORD` values from your `.env.local`.
-
-**Dashboard features:**
-- `/admin` — Overview with stats
-- `/admin/slots` — Add/remove available time slots
-- `/admin/appointments` — View all bookings, cancel appointments
-
----
-
-## 📁 Project Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx                    # Public landing page
-│   ├── book/page.tsx               # Booking flow
-│   ├── booking-confirmed/page.tsx  # Booking confirmation / pending payment
-│   ├── admin/                      # Protected admin area
-│   │   ├── layout.tsx              # Auth guard
-│   │   ├── page.tsx                # Overview
-│   │   ├── slots/page.tsx          # Slot management
-│   │   ├── appointments/page.tsx   # Appointment list
-│   │   └── login/page.tsx          # Login form
-│   └── api/
-│       ├── auth/[...nextauth]/     # NextAuth handler
-│       ├── slots/                  # GET/POST/DELETE slots
-│       ├── appointments/           # GET/PATCH appointments
-│       └── bookings/               # Create + fetch bookings
-├── components/
-│   ├── layout/                     # Navbar, Footer
-│   ├── landing/                    # All landing sections
-│   ├── booking/                    # DatePicker, TimeSlotPicker, BookingForm
-│   └── admin/                      # SlotManager, AppointmentTable
-├── lib/
-│   ├── supabase.ts
-│   ├── bookings.ts
-│   └── auth.ts
-└── types/index.ts
-```
+Review pending/review email jobs if automatic delivery fails. Never blindly resend an
+ambiguous delivery beyond the provider's deduplication window. The Hobby-compatible
+daily cron runs at 03:00 UTC and handles ten jobs; some failed deliveries will require
+manual review. Inbox delivery and a two-participant Daily call need human verification.

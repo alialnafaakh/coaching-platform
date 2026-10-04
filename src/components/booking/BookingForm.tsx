@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TimeSlot, ConsultationSettingsPublic } from "@/types";
 import { format } from "date-fns";
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function BookingForm({ slot, date, draft, onDraftChange }: Props) {
+  const router = useRouter();
   const { isRtl, t, lang } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -96,7 +98,7 @@ export default function BookingForm({ slot, date, draft, onDraftChange }: Props)
         window.location.assign(payment.url);
       } catch {
         // Keep access to the existing hold when configuration or checkout fails.
-        window.location.href = `/booking-confirmed?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&payment=unavailable`;
+        router.push(`/booking-confirmed?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&payment=unavailable`);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("error_generic"));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { expireExpiredHolds, isHoldExpired, toPublicAppointment, tokensMatch } from "@/lib/bookings";
+import { expireExpiredHolds, toPublicAppointment, tokensMatch } from "@/lib/bookings";
 
 export const dynamic = "force-dynamic";
 
@@ -36,17 +36,12 @@ export async function GET(
       );
     }
 
-    if (isHoldExpired(appt)) {
-      await expireExpiredHolds(db);
-      appt.status = "cancelled";
-      appt.payment_status = "failed";
-    }
 
     return NextResponse.json({
       appointment: toPublicAppointment(appt, appt.time_slots),
     });
-  } catch (err) {
-    console.error("Get booking error:", err);
+  } catch {
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json(
       { error: "server_error", message: "Unable to load this booking." },
       { status: 500 }

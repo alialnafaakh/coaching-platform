@@ -1,3 +1,4 @@
+import { isAdminSession } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -54,7 +55,7 @@ export async function GET(
   const { id } = await params;
   const token = req.nextUrl.searchParams.get("token") || "";
   const session = await getServerSession(authOptions);
-  const isAdmin = Boolean(session);
+  const isAdmin = isAdminSession(session);
 
   if (!id) {
     return NextResponse.json({ error: "not_found", message: "Appointment not found." }, { status: 404 });
@@ -77,6 +78,8 @@ export async function GET(
     }
   }
 
+  if (appt.payment_status !== "paid") return NextResponse.json(
+    { error: "payment_required", message: "Verified payment is required for this consultation." }, { status: 403 });
   const window = buildJoinWindow(appt, appt.time_slots);
   const access = evaluateJoinAccess({ status: appt.status, window });
 

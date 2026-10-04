@@ -23,6 +23,8 @@ function apiKey(): string {
 async function dailyFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${DAILY_API_BASE}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(15000),
+    redirect: "error",
     headers: {
       Authorization: `Bearer ${apiKey()}`,
       "Content-Type": "application/json",
@@ -32,12 +34,7 @@ async function dailyFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
-    // Never surface raw Daily payloads to callers/logs beyond a short message.
-    const message =
-      (payload && typeof payload.error === "string" && payload.error) ||
-      (payload && typeof payload.info === "string" && payload.info) ||
-      "Daily API request failed.";
-    throw new DailyApiError(String(message), res.status);
+    throw new DailyApiError("Daily API request failed.", res.status);
   }
   return payload as T;
 }

@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 
-const DEFAULT_CONTENT: any = {
+const DEFAULT_CONTENT = {
   en: {
     general: { siteName: "Maryem", availability: "Accepting New Clients" },
     hero: {
@@ -118,7 +119,7 @@ const DEFAULT_CONTENT: any = {
 const isAr = (lang: string) => lang === "ar";
 
 export default function ContentEditor() {
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState(DEFAULT_CONTENT);
   const [currentLang, setCurrentLang] = useState<"en" | "ar">("en");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -191,8 +192,8 @@ export default function ContentEditor() {
       });
   }, []);
 
-  const handleChange = (section: string, field: string, value: any) => {
-    setContent((prev: any) => ({
+  const handleChange = (section: "general" | "hero" | "about" | "sections", field: string, value: string | string[]) => {
+    setContent((prev) => ({
       ...prev,
       [currentLang]: {
         ...prev[currentLang],
@@ -205,13 +206,13 @@ export default function ContentEditor() {
   };
 
   // ── Testimonial helpers ──────────────────────────────────────────
-  const testimonials: any[] = content?.[currentLang]?.testimonials ?? [];
+  const testimonials: (typeof DEFAULT_CONTENT.en.testimonials) = content?.[currentLang]?.testimonials ?? [];
 
-  const updateTestimonial = (index: number, field: string, value: any) => {
-    const updated = testimonials.map((t: any, i: number) =>
+  const updateTestimonial = (index: number, field: string, value: string | number) => {
+    const updated = testimonials.map((t, i) =>
       i === index ? { ...t, [field]: value } : t
     );
-    setContent((prev: any) => ({
+    setContent((prev) => ({
       ...prev,
       [currentLang]: { ...prev[currentLang], testimonials: updated },
     }));
@@ -219,7 +220,7 @@ export default function ContentEditor() {
 
   const addTestimonial = () => {
     const blank = { name: "", role: "", date: "", quote: "", stars: 5 };
-    setContent((prev: any) => ({
+    setContent((prev) => ({
       ...prev,
       [currentLang]: {
         ...prev[currentLang],
@@ -229,8 +230,8 @@ export default function ContentEditor() {
   };
 
   const removeTestimonial = (index: number) => {
-    const updated = testimonials.filter((_: any, i: number) => i !== index);
-    setContent((prev: any) => ({
+    const updated = testimonials.filter((_, i) => i !== index);
+    setContent((prev) => ({
       ...prev,
       [currentLang]: { ...prev[currentLang], testimonials: updated },
     }));
@@ -241,7 +242,7 @@ export default function ContentEditor() {
     const target = index + dir;
     if (target < 0 || target >= arr.length) return;
     [arr[index], arr[target]] = [arr[target], arr[index]];
-    setContent((prev: any) => ({
+    setContent((prev) => ({
       ...prev,
       [currentLang]: { ...prev[currentLang], testimonials: arr },
     }));
@@ -316,8 +317,8 @@ export default function ContentEditor() {
       });
       if (!res.ok) throw new Error("Failed to save");
       setMsg("✓ Content saved successfully!");
-    } catch (err: any) {
-      setMsg(`Error saving content: ${err.message}`);
+    } catch (err) {
+      setMsg(`Error saving content: ${err instanceof Error ? err.message : "Unable to save"}`);
     } finally {
       setSaving(false);
     }
@@ -484,7 +485,7 @@ export default function ContentEditor() {
           )}
 
           <div className="space-y-5">
-            {testimonials.map((t: any, i: number) => (
+            {testimonials.map((t, i) => (
               <div
                 key={i}
                 className="border border-[#e5e0d8] rounded-2xl p-5 bg-[#faf9f6] relative group"
@@ -634,7 +635,7 @@ export default function ContentEditor() {
               </label>
               <div className="flex items-center gap-4">
                 {c.about?.imageUrl ? (
-                  <img src={c.about.imageUrl} alt="Profile" className="w-20 h-20 rounded-xl object-cover" />
+                  <Image width={80} height={80} unoptimized src={c.about.imageUrl} alt="Profile" className="w-20 h-20 rounded-xl object-cover" />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-[#f0ede6] flex items-center justify-center text-xs text-[#9ca3af]">
                     {ar ? "لا توجد صورة" : "No image"}

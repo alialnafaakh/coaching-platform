@@ -46,7 +46,6 @@ export default function AppointmentTable() {
   } | null>(null);
 
   const fetchAppts = () => {
-    setLoading(true);
     fetch("/api/appointments")
       .then((r) => r.json())
       .then((d) => setAppointments(Array.isArray(d) ? d : []))
@@ -212,7 +211,7 @@ export default function AppointmentTable() {
                   {consultationLabel(appt.status)}
                 </span>
 
-                {(appt.status === "confirmed" || appt.status === "in_progress") && (
+                {appt.payment_status === "paid" && (appt.status === "confirmed" || appt.status === "in_progress") && (
                   <button
                     onClick={() => handleResend(appt.id)}
                     disabled={resending === appt.id}
@@ -222,7 +221,7 @@ export default function AppointmentTable() {
                   </button>
                 )}
 
-                {canOpenConsultation(appt.status) ? (
+                {appt.payment_status === "paid" && canOpenConsultation(appt.status) ? (
                   <Link
                     href={`/admin/appointments/${appt.id}/consultation`}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"

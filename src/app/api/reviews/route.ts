@@ -1,3 +1,4 @@
+import { isAdminSession } from "@/lib/serverSecurity";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 /** Admin: list all consultation reviews with appointment context. */
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,7 +49,7 @@ export async function GET() {
         )
         .order("created_at", { ascending: false });
       if (fallback.error) {
-        console.error("Admin reviews list error:", fallback.error.message);
+        console.error("SERVER_OPERATION_FAILED");
         return NextResponse.json({ error: "Unable to load reviews." }, { status: 500 });
       }
       data = fallback.data || [];

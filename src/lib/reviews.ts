@@ -42,13 +42,7 @@ function normalizeAppointmentRelation(raw: unknown): {
   return { client_name: appt.client_name, status: appt.status };
 }
 
-function appointmentStatusFromRelation(raw: unknown): string | null {
-  if (!raw) return null;
-  const row = Array.isArray(raw) ? raw[0] : raw;
-  if (!row || typeof row !== "object") return null;
-  const status = (row as { status?: unknown }).status;
-  return typeof status === "string" ? status : null;
-}
+
 
 export function publicReviewDisplayName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);

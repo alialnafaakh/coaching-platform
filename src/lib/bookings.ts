@@ -71,41 +71,8 @@ export function toPublicAppointment(
 }
 
 export async function expireExpiredHolds(db: SupabaseClient): Promise<void> {
-  const now = new Date().toISOString();
-  const { data: expired, error } = await db
-    .from("appointments")
-    .select("id, slot_id")
-    .eq("status", "pending_payment")
-    .eq("payment_status", "unpaid")
-    .not("payment_expires_at", "is", null)
-    .lt("payment_expires_at", now);
-
-  if (error || !expired?.length) return;
-
-  const ids = expired.map((row) => row.id);
-  const { data: cancelled, error: cancelError } = await db
-    .from("appointments")
-    .update({ status: "cancelled", payment_status: "failed" })
-    .in("id", ids)
-    .eq("status", "pending_payment")
-    .eq("payment_status", "unpaid")
-    .select("id, slot_id");
-
-  if (cancelError || !cancelled?.length) return;
-
-  const slotIds = Array.from(new Set(cancelled.map((row) => row.slot_id)));
-  for (const slotId of slotIds) {
-    const { data: blockers, error: blockersError } = await db
-      .from("appointments")
-      .select("id")
-      .eq("slot_id", slotId)
-      .in("status", ACTIVE_STATUSES)
-      .limit(1);
-
-    if (!blockersError && !blockers?.length) {
-      await db.from("time_slots").update({ is_booked: false }).eq("id", slotId);
-    }
-  }
+  const { error } = await db.rpc("expire_booking_holds");
+  if (error) throw new Error("BOOKING_EXPIRY_UNAVAILABLE");
 }
 
 export function isHoldExpired(appt: {

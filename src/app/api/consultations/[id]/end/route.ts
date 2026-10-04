@@ -1,3 +1,4 @@
+import { isAdminSession, isSameOrigin } from "@/lib/serverSecurity";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -10,8 +11,9 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOrigin(_req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,13 +25,15 @@ export async function POST(
   const db = getSupabaseAdmin();
   const { data: appt, error } = await db
     .from("appointments")
-    .select("id, status")
+    .select("id, status, payment_status")
     .eq("id", id)
     .maybeSingle();
 
   if (error || !appt) {
     return NextResponse.json({ error: "not_found", message: "Appointment not found." }, { status: 404 });
   }
+
+  if (appt.payment_status !== "paid") return NextResponse.json({ error: "Verified payment required" }, { status: 403 });
 
   if (appt.status === "completed") {
     return NextResponse.json({ success: true, status: "completed" });
@@ -42,17 +46,10 @@ export async function POST(
     );
   }
 
-  const { error: updateError } = await db
-    .from("appointments")
-    .update({
-      status: "completed",
-      ended_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .in("status", ["confirmed", "in_progress"]);
+  const { data: completed, error: updateError } = await db.rpc("complete_consultation", { p_appointment_id: id });
 
-  if (updateError) {
-    console.error("End consultation error:", updateError);
+  if (updateError || !completed) {
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json(
       { error: "server_error", message: "Unable to end the consultation." },
       { status: 500 }

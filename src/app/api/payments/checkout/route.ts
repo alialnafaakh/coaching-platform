@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 import { tokensMatch } from "@/lib/bookings";
 import { createPaymentLink, getWaylCheckoutConfig, quoteWaylPayment, referenceAmount, getWaylEnvironment, validWaylCheckoutUrl, WaylError } from "@/lib/wayl";
 
+import { boundedJson } from "@/lib/serverSecurity";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -13,7 +15,7 @@ function failure(message: string, status: number) {
 export async function POST(req: NextRequest) {
   let conflictDiagnostic: "CHECKOUT_INVALID_PRICE" | "CHECKOUT_HOLD_INVALID" = "CHECKOUT_INVALID_PRICE";
   try {
-    const body = await req.json().catch(() => null);
+    const body = await boundedJson(req).catch(() => null);
     const id = body?.appointment_id;
     const token = body?.token;
     if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) ||

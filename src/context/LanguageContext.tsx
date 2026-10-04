@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useCallback, useSyncExternalStore, useEffect } from "react";
 
 type Language = "en" | "ar";
 
@@ -558,22 +558,23 @@ const UI_STRINGS: Record<Language, UiStrings> = {
   }
 };
 
+function subscribeLanguage(notify: () => void) {
+  window.addEventListener("storage", notify);
+  window.addEventListener("language-change", notify);
+  return () => { window.removeEventListener("storage", notify); window.removeEventListener("language-change", notify); };
+}
+function readLanguage(): Language { return localStorage.getItem("lang") === "ar" ? "ar" : "en"; }
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Language>("en");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("lang") as Language;
-    if (saved) setLang(saved);
-  }, []);
-
+  const lang = useSyncExternalStore(subscribeLanguage, readLanguage, () => "en" as Language);
   const handleSetLang = (newLang: Language) => {
-    setLang(newLang);
     localStorage.setItem("lang", newLang);
-    document.documentElement.lang = newLang;
-    document.documentElement.dir = newLang === "ar" ? "rtl" : "ltr";
+    window.dispatchEvent(new Event("language-change"));
   };
-
-  const t = <K extends TranslationKey>(key: K): UiStrings[K] => UI_STRINGS[lang][key];
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
+  const t = useCallback(<K extends TranslationKey>(key: K): UiStrings[K] => UI_STRINGS[lang][key], [lang]);
 
   return (
     <LanguageContext.Provider value={{ lang, setLang: handleSetLang, isRtl: lang === "ar", t }}>

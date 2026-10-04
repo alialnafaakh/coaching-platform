@@ -182,7 +182,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         { status: 409 }
       );
     }
-    console.error("Review insert error:", insertError.message);
+    console.error("SERVER_OPERATION_FAILED");
     return NextResponse.json(
       { error: "server_error", message: "Unable to submit your review." },
       { status: 500 }

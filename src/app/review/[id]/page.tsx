@@ -27,9 +27,10 @@ function ReviewFormInner() {
   const token = searchParams.get("token") || "";
   const { isRtl, t, lang } = useLanguage();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(id && token));
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [requestError, setError] = useState("");
+  const error = !id || !token ? t("booking_missing_access") : requestError;
   const [success, setSuccess] = useState(false);
   const [state, setState] = useState<ReviewState | null>(null);
   const [rating, setRating] = useState(5);
@@ -37,12 +38,8 @@ function ReviewFormInner() {
 
   const load = useCallback(async () => {
     if (!id || !token) {
-      setError(t("booking_missing_access"));
-      setLoading(false);
       return;
     }
-    setLoading(true);
-    setError("");
     try {
       const res = await fetch(
         `/api/reviews/appointment/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`
@@ -64,7 +61,8 @@ function ReviewFormInner() {
   }, [id, token, t]);
 
   useEffect(() => {
-    load();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- State changes only after the fetch promise settles.
+    void load();
   }, [load]);
 
   const handleSubmit = async (e: React.FormEvent) => {
