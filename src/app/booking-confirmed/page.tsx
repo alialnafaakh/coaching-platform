@@ -148,7 +148,7 @@ function BookingConfirmedContent() {
                 className={`text-4xl text-[#1a1a2e] mb-4 ${isRtl ? "font-arabic-display" : ""}`}
                 style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
               >
-                {t("payment_status_error")}
+                {!id || !token ? t("booking_missing_access") : t("payment_status_error")}
               </h1>
               <p className={`text-[#6b7280] text-base leading-relaxed mb-8 ${isRtl ? "font-arabic" : ""}`}>
                 {error}

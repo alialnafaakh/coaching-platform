@@ -584,3 +584,11 @@ test('admin role, same-origin writes and cron authorization fail closed', () => 
   assert.equal(security.authorizedCron(new Request('https://example.test/api')),false);
   assert.equal(security.authorizedCron(new Request('https://example.test/api',{headers:{authorization:'Bearer '+'synthetic-secret-'.repeat(3)}})),true);
 });
+
+test('invitation origins reject insecure, credential-bearing or non-origin configuration', () => {
+  for (const origin of ['http://example.test','https://user:pass@example.test','https://example.test/path','https://example.test/?x=1','https://example.test/#fragment','https://localhost','https://127.0.0.1','https://[::1]']) {
+    const s=setup({}, { NEXT_PUBLIC_SITE_URL:origin });
+    assert.throws(()=>s.email.getPublicSiteUrl());
+  }
+  assert.equal(setup({}, { NEXT_PUBLIC_SITE_URL:' https://example.test/ ' }).email.getPublicSiteUrl(),'https://example.test');
+});

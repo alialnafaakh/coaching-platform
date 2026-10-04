@@ -61,10 +61,14 @@ export function getPublicSiteUrl(): string {
   if (!url) {
     throw new Error("Production site URL is not configured.");
   }
-  if (/localhost|127\.0\.0\.1/i.test(url)) {
-    throw new Error("Production site URL must not be localhost.");
+  let parsed: URL;
+  try { parsed = new URL(url); }
+  catch { throw new Error("Production site URL is invalid."); }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password ||
+      parsed.origin !== url || /localhost|127\.0\.0\.1|\[::1\]/i.test(parsed.hostname)) {
+    throw new Error("Production site URL must be a public HTTPS origin.");
   }
-  return url;
+  return parsed.origin;
 }
 
 export function buildConsultationJoinUrl(
