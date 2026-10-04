@@ -49,10 +49,10 @@ export default function Footer({ siteName }: { siteName?: string }) {
       ]
     : [
         {
-          href: "https://www.instagram.com/evolvere.elegantly",
+          href: "https://www.instagram.com/evolvere.mariam/",
           icon: <InstagramIcon />,
           label: "Instagram",
-          handle: "evolvere.elegantly",
+          handle: "evolvere.mariam",
           hoverColor: "hover:text-pink-400",
         },
       ];
