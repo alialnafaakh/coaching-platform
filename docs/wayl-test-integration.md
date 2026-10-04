@@ -173,3 +173,19 @@ only retries. A missing external fetch span does not establish that no request o
 the earlier implementation caught and sanitized every failure without logging its stage.
 No response bodies, URLs, references, tokens, customer data or environment values are logged.
 `CHECKOUT_ALREADY_REQUESTED` alone cannot identify the initial upstream failure.
+
+## Booking prerequisite diagnostics
+
+The reservation endpoint validates current pricing and Wayl configuration before
+holding inventory. Fixed diagnostic codes identify the failing prerequisite without
+returning environment values, secrets, provider responses or customer details.
+`WAYL_ENV_MISSING` means the deployed runtime has no mode; a Preview-scoped variable
+does not configure Production. Configure Production `WAYL_ENV=live` and deploy again.
+Do not add a default mode or bypass preflight. Rate and credential errors have separate
+codes and must be corrected in configuration without inventing a conversion rate.
+
+A diagnostic request with a verified nonexistent slot ID can validate these
+prerequisites and reach `invalid_slot` from the transactional reservation function
+without inserting a booking or contacting Wayl. A rolled-back server-role SQL check
+can independently verify function execution. Neither check proves merchant checkout
+acceptance; a legitimate checkout/payment remains a manual customer action.
