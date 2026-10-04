@@ -41,8 +41,17 @@ function setup(overrides = {}, envOverrides = {}) {
     if (state.reply === 'error') return { status: 400, json: async () => ({ message: 'synthetic-private-detail' }) };
     const data = { referenceId: body.referenceId, total: String(body.total), currency: 'IQD' };
     if (state.reply !== 'no-url') data.url = state.reply === 'evil-url' ? 'https://evil.test/pay/x' : 'https://checkout.thewayl.com/payment/action?id=test-link';
+    if (state.reply === 'reference') data.referenceId = 'synthetic-private-detail';
+    if (state.reply === 'currency') data.currency = 'USD';
+    if (state.reply === 'amount') data.total = '1';
+    if (state.reply === 'environment') data.env = env.WAYL_ENV === 'live' ? 'test' : 'live';
+    if (state.reply === 'url-type') data.url = {};
+    if (state.reply === 'url-malformed') data.url = 'synthetic-private-detail';
+    if (state.reply === 'url-path') data.url = 'https://checkout.thewayl.com/unexpected';
     return { status: 201, json: async () => {
       if (state.reply === 'invalid-json') throw new Error('synthetic-private-detail');
+      if (state.reply === 'shape') return [];
+      if (state.reply === 'data') return { data: [] };
       return { data };
     } };
   }, { warn: code => state.diagnostics.push(code) });
@@ -526,8 +535,13 @@ test('successful link with failed persistence retains claim and blocks ambiguous
 test('first-request diagnostics distinguish request, HTTP, JSON and validation failures using codes only', async () => {
   for (const [reply, code] of [['timeout', 'WAYL_CREATE_REQUEST_FAILED'],
     ['error', 'WAYL_CREATE_HTTP_REJECTED'], ['invalid-json', 'WAYL_CREATE_JSON_INVALID'],
-    ['no-url', 'WAYL_CREATE_RESPONSE_INVALID'], ['evil-url', 'WAYL_CREATE_RESPONSE_INVALID']]) {
-    const s = setup({ payment_reference: null }); s.state.reply = reply;
+    ['no-url', 'WAYL_CREATE_URL_FIELD_INVALID'], ['evil-url', 'WAYL_CREATE_URL_ORIGIN_INVALID'],
+    ['shape', 'WAYL_CREATE_RESPONSE_SHAPE_INVALID'], ['data', 'WAYL_CREATE_DATA_OBJECT_INVALID'],
+    ['reference', 'WAYL_CREATE_REFERENCE_MISMATCH'], ['currency', 'WAYL_CREATE_CURRENCY_MISMATCH'],
+    ['amount', 'WAYL_CREATE_AMOUNT_MISMATCH'], ['environment', 'WAYL_CREATE_ENVIRONMENT_MISMATCH'],
+    ['url-type', 'WAYL_CREATE_URL_FIELD_INVALID'], ['url-malformed', 'WAYL_CREATE_URL_MALFORMED'],
+    ['url-path', 'WAYL_CREATE_URL_PATH_INVALID']]) {
+    const s = setup({ payment_reference: null }, { WAYL_ENV: 'live' }); s.state.reply = reply;
     assert.equal((await s.requestCheckout()).status, 502);
     assert.ok(s.state.diagnostics.includes('WAYL_CREATE_REQUEST_STARTED'));
     assert.ok(s.state.diagnostics.includes(code));

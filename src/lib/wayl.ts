@@ -145,12 +145,29 @@ export async function createPaymentLink(input: {
     }
     diagnostic = "WAYL_CREATE_JSON_INVALID";
     const payload = await response.json();
-    const data = payload?.data;
-    diagnostic = "WAYL_CREATE_RESPONSE_INVALID";
-    if (data?.referenceId !== input.referenceId || data?.currency !== "IQD" ||
-        Number(data?.total) !== input.totalIqd || !validWaylCheckoutUrl(data?.url)) {
-      throw new Error("Unexpected response");
-    }
+    // Fixed codes only: never log provider objects, field values or URLs.
+    diagnostic = "WAYL_CREATE_RESPONSE_SHAPE_INVALID";
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("Unexpected response");
+    const data = payload.data;
+    diagnostic = "WAYL_CREATE_DATA_OBJECT_INVALID";
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_REFERENCE_MISMATCH";
+    if (data.referenceId !== input.referenceId) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_CURRENCY_MISMATCH";
+    if (data.currency !== "IQD") throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_AMOUNT_MISMATCH";
+    if (Number(data.total) !== input.totalIqd) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_ENVIRONMENT_MISMATCH";
+    if (data.env !== undefined && data.env !== config.environment) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_URL_FIELD_INVALID";
+    if (typeof data.url !== "string" || !data.url) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_URL_MALFORMED";
+    const checkoutUrl = new URL(data.url);
+    diagnostic = "WAYL_CREATE_URL_ORIGIN_INVALID";
+    if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "checkout.thewayl.com" ||
+        checkoutUrl.username || checkoutUrl.password || checkoutUrl.port || checkoutUrl.hash) throw new Error("Unexpected response");
+    diagnostic = "WAYL_CREATE_URL_PATH_INVALID";
+    if (!validWaylCheckoutUrl(data.url)) throw new Error("Unexpected response");
     console.warn("WAYL_CREATE_RESPONSE_VALID");
     return { url: data.url, expiresAt };
   } catch {
