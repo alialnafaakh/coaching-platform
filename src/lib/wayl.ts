@@ -88,8 +88,9 @@ export function validWaylCheckoutUrl(value: unknown): value is string {
     const url = new URL(value);
     return url.protocol === "https:" && url.hostname === "checkout.thewayl.com" &&
       !url.username && !url.password && !url.port && !url.hash &&
-      (url.pathname.startsWith("/pay/") ||
-       (url.pathname === "/payment/action" && Boolean(url.searchParams.get("id"))));
+      (/^\/pay\/[A-Za-z0-9_-]+$/.test(url.pathname) ||
+       (["/payment/action", "/pay", "/en/pay"].includes(url.pathname) &&
+        Boolean(url.searchParams.get("id")?.trim())));
   } catch {
     return false;
   }

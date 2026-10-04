@@ -48,6 +48,7 @@ function setup(overrides = {}, envOverrides = {}) {
     if (state.reply === 'url-type') data.url = {};
     if (state.reply === 'url-malformed') data.url = 'synthetic-private-detail';
     if (state.reply === 'url-path') data.url = 'https://checkout.thewayl.com/unexpected';
+    if (state.reply === 'live-query-url') data.url = 'https://checkout.thewayl.com/pay?id=synthetic-link';
     return { status: 201, json: async () => {
       if (state.reply === 'invalid-json') throw new Error('synthetic-private-detail');
       if (state.reply === 'shape') return [];
@@ -567,6 +568,31 @@ test('LIVE checkout, recovery, webhook confirmation and email use configured env
   assert.equal(s.state.emailAttempts, 1);
   assert.equal((await s.event({ env: 'live' })).status, 200);
   assert.equal(s.state.emailAttempts, 1);
+});
+
+test('trusted Wayl checkout paths support query and code formats without permitting unrelated destinations', async () => {
+  const s = setup({ payment_reference: null }, { WAYL_ENV: 'live' });
+  for (const path of ['/pay?id=synthetic-link', '/en/pay?id=synthetic-link&lang=en',
+    '/payment/action?id=synthetic-link', '/pay/SYNTHETIC_CODE']) {
+    assert.equal(s.wayl.validWaylCheckoutUrl('https://checkout.thewayl.com' + path), true);
+  }
+  for (const url of ['http://checkout.thewayl.com/pay?id=synthetic-link',
+    'https://evil.test/pay?id=synthetic-link', 'https://checkout.thewayl.com.evil.test/pay?id=synthetic-link',
+    'https://user:pass@checkout.thewayl.com/pay?id=synthetic-link',
+    'https://checkout.thewayl.com:444/pay?id=synthetic-link',
+    'https://checkout.thewayl.com/pay?id=synthetic-link#fragment',
+    'https://checkout.thewayl.com/login?id=synthetic-link',
+    'https://checkout.thewayl.com/pay', 'https://checkout.thewayl.com/pay?id=',
+    'https://checkout.thewayl.com/pay/', 'https://checkout.thewayl.com/pay/code/unrelated',
+    'https://checkout.thewayl.com/en/pay/unrelated?id=synthetic-link']) {
+    assert.equal(s.wayl.validWaylCheckoutUrl(url), false);
+  }
+  s.state.reply = 'live-query-url';
+  assert.equal((await s.requestCheckout()).status, 200);
+  assert.equal((await s.requestCheckout()).status, 200);
+  assert.equal(s.state.requests.length, 1);
+  assert.ok(s.state.appointments[0].payment_checkout_url);
+  assert.equal(s.state.appointments[0].payment_status, 'unpaid');
 });
 
 test('LIVE webhook cannot confirm an old TEST reference even when event omits environment', async () => {
