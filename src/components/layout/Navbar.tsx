@@ -31,6 +31,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
 
   return (
     <motion.header
+      dir="ltr"
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
@@ -43,7 +44,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
       <div
         className={`max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 min-w-0`}
       >
-        {/* Logo — start side in LTR/RTL */}
+        {/* Physical layout stays LTR; individual Arabic text keeps RTL direction. */}
         <Link
           href="/"
           onClick={(event) => {
@@ -66,6 +67,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
             className="w-10 h-10 object-contain rounded-full flex-shrink-0"
           />
           <span
+            dir={isRtl ? "rtl" : "ltr"}
             className={`font-display text-xl text-[#1a1a2e] tracking-wide ${isRtl ? "font-arabic-display" : ""}`}
             style={{ fontFamily: isRtl ? undefined : "Cormorant Garamond, Georgia, serif" }}
           >
@@ -82,6 +84,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
               <Link
                 key={l.href}
                 href={l.href}
+                dir={isRtl ? "rtl" : "ltr"}
                 className={`text-sm font-medium text-[#6b7280] hover:text-[#0d7377] transition-colors duration-200 whitespace-nowrap ${isRtl ? "font-arabic" : ""}`}
               >
                 {l.label}
@@ -92,6 +95,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
             <LanguageSwitcher />
             <Link
               href="/book"
+              dir={isRtl ? "rtl" : "ltr"}
               className={`px-5 py-2 rounded-full text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95 whitespace-nowrap ${isRtl ? "font-arabic" : ""}`}
               style={{ background: "linear-gradient(135deg, #0d7377, #14a3a8)" }}
             >
@@ -142,6 +146,7 @@ export default function Navbar({ siteName }: { siteName?: string }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             id="mobile-navigation"
+            dir={isRtl ? "rtl" : "ltr"}
             className="lg:hidden bg-white border-b border-[#e5e0d8] overflow-hidden"
           >
             <div
