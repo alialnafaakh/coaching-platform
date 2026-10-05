@@ -1,6 +1,8 @@
+import "server-only";
 import { Resend } from "resend";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { resolveSessionDurationMinutes } from "@/lib/consultationAccess";
+import { referenceAmount } from "@/lib/wayl";
+import { CONSULTATION_TZ_OFFSET, resolveSessionDurationMinutes } from "@/lib/consultationAccess";
 
 type EmailLang = "en" | "ar";
 
@@ -11,6 +13,8 @@ type AppointmentEmailRow = {
   client_name: string;
   client_email: string;
   join_token: string;
+  notes: string | null;
+  payment_reference: string | null;
   session_duration_minutes: number | null;
   final_price_usd: number | null;
   consultation_email_sent_at: string | null;
@@ -205,6 +209,46 @@ ${input.joinUrl}
   return { subject, html, text };
 }
 
+function getConsultantNotificationEmail(): string {
+  const recipient = process.env.CONSULTANT_NOTIFICATION_EMAIL?.trim();
+  if (!recipient || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(recipient)) {
+    throw new Error("CONSULTANT_EMAIL_NOT_CONFIGURED");
+  }
+  return recipient;
+}
+
+function buildConsultantEmailContent(appt: AppointmentEmailRow): { subject: string; html: string; text: string } {
+  if (!appt.time_slots || !appt.payment_reference) throw new Error("EMAIL_DETAILS_UNAVAILABLE");
+  const slot = appt.time_slots;
+  // This is the amount already validated by the webhook, not a new rate conversion.
+  const actualIqd = referenceAmount(appt.payment_reference, appt.final_price_usd);
+  const duration = resolveSessionDurationMinutes(appt, slot);
+  const consultationUrl = `${getPublicSiteUrl()}/admin/appointments/${encodeURIComponent(appt.id)}/consultation`;
+  const details = [
+    ["Customer", appt.client_name], ["Email", appt.client_email],
+    ["Date", slot.date], ["Start time", slot.start_time.slice(0, 5)],
+    ...(slot.end_time ? [["End time", slot.end_time.slice(0, 5)]] : []),
+    ["Duration", `${duration} minutes`], ["Timezone", `Istanbul / TRT (UTC${CONSULTATION_TZ_OFFSET})`],
+    ["Final session price", `${formatPrice(appt.final_price_usd)} USD`],
+    ["Amount paid", `${actualIqd.toLocaleString("en-US")} IQD`],
+    ["Payment status", "Paid"], ["Appointment status", "Confirmed"],
+    ...(appt.notes?.trim() ? [["Customer notes", appt.notes.trim()]] : []),
+  ];
+  const rows = details.map(([label, value]) => `<p style="margin:0 0 12px;line-height:1.6;overflow-wrap:anywhere;"><span style="color:#6b7280;">${escapeHtml(label)}</span><br><strong style="white-space:pre-wrap;unicode-bidi:plaintext;">${escapeHtml(value)}</strong></p>`).join("");
+  const subject = `New Confirmed Consultation — ${appt.client_name.replace(/[\r\n]/g, " ")} — ${slot.date}`;
+  const html = `<!DOCTYPE html><html lang="en" dir="ltr"><body style="margin:0;background:#f7f5f0;color:#1a1a2e;font-family:Segoe UI,Arial,sans-serif;">
+    <div style="max-width:560px;margin:24px auto;padding:0 12px;"><div style="background:#fff;border:1px solid #e5e0d8;border-top:3px solid #c9952b;border-radius:16px;padding:24px;">
+    <p style="margin:0 0 12px;color:#0d7377;font-weight:600;">Maryem · New paid consultation</p>
+    <h1 style="font-family:Georgia,serif;font-size:26px;line-height:1.3;margin:0 0 16px;">Consultation confirmed</h1>
+    <p style="line-height:1.6;color:#4b5563;">A customer has completed payment. Your appointment details are below.</p>
+    <div style="background:#faf9f6;border:1px solid #e5e0d8;border-radius:12px;padding:16px;margin:20px 0;">${rows}</div>
+    <p style="text-align:center;margin:0 0 16px;"><a href="${escapeHtml(consultationUrl)}" style="display:inline-block;background:#0d7377;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;">Join consultation</a></p>
+    <p style="font-size:12px;line-height:1.6;color:#6b7280;margin:0;">Consultant access requires your admin sign-in. Keep these customer details private.</p>
+    </div></div></body></html>`;
+  const text = `Maryem — New confirmed consultation\n\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\n\nJoin consultation (admin sign-in required):\n${consultationUrl}`;
+  return { subject, html, text };
+}
+
 async function loadAppointmentForEmail(
   db: SupabaseClient,
   appointmentId: string
@@ -212,7 +256,7 @@ async function loadAppointmentForEmail(
   const { data, error } = await db
     .from("appointments")
     .select(
-      "id, status, payment_status, client_name, client_email, join_token, session_duration_minutes, final_price_usd, consultation_email_sent_at, consultation_email_last_error, time_slots(date, start_time, end_time)"
+      "id, status, payment_status, client_name, client_email, join_token, notes, payment_reference, session_duration_minutes, final_price_usd, consultation_email_sent_at, consultation_email_last_error, time_slots(date, start_time, end_time)"
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -246,19 +290,24 @@ export async function processConsultationEmailJob(
       if (!await finish(null, true)) throw new Error("EMAIL_FINISH_FAILED");
       return { ok: true, skipped: true };
     }
-    if (!appt.client_email || !appt.join_token || !appt.time_slots?.date || !appt.time_slots.start_time) {
+    if (!appt.client_email || (job.purpose !== "consultant_notification" && !appt.join_token) || !appt.time_slots?.date || !appt.time_slots.start_time) {
       throw new Error("EMAIL_DETAILS_UNAVAILABLE");
     }
-    const content = buildEmailContent({
+    const isConsultant = job.purpose === "consultant_notification";
+    if (!isConsultant && job.purpose !== "invitation" && !job.purpose.startsWith("resend-")) {
+      throw new Error("EMAIL_PURPOSE_INVALID");
+    }
+    const content = isConsultant ? buildConsultantEmailContent(appt) : buildEmailContent({
       lang: resolveEmailLang(appt.client_name), clientName: appt.client_name,
       date: appt.time_slots.date, startTime: appt.time_slots.start_time,
       durationMinutes: resolveSessionDurationMinutes(appt, appt.time_slots),
       priceLabel: formatPrice(appt.final_price_usd),
       joinUrl: buildConsultationJoinUrl(appt.id, appt.join_token),
     });
+    const recipient = isConsultant ? getConsultantNotificationEmail() : appt.client_email;
     const resend = new Resend(getResendApiKey());
     const { data, error } = await resend.emails.send({
-      from: getEmailFrom(), to: appt.client_email, replyTo: getEmailReplyTo(),
+      from: getEmailFrom(), to: recipient, replyTo: getEmailReplyTo(),
       subject: content.subject, html: content.html, text: content.text,
     }, { idempotencyKey: "consultation/" + job.id });
     if (error || !data?.id) throw new Error("EMAIL_PROVIDER_UNAVAILABLE");
@@ -293,6 +342,13 @@ export async function sendConsultationInvitationEmail(
 export async function notifyConsultationConfirmed(db: SupabaseClient, appointmentId: string): Promise<void> {
   try { await sendConsultationInvitationEmail(db, appointmentId); }
   catch { console.error("EMAIL_NOTIFY_UNAVAILABLE"); }
+  // Only process a job created by the verified payment transaction; never backfill.
+  try {
+    const { data, error } = await db.from("consultation_email_jobs").select("id")
+      .eq("appointment_id", appointmentId).eq("purpose", "consultant_notification").maybeSingle();
+    if (error) throw new Error("EMAIL_QUEUE_UNAVAILABLE");
+    if (data) await processConsultationEmailJob(db, data.id);
+  } catch { console.error("CONSULTANT_EMAIL_NOTIFY_UNAVAILABLE"); }
 }
 
 export async function retryConsultationEmails(db: SupabaseClient): Promise<{ processed: number; failed: number }> {

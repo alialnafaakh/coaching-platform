@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { PGlite } = require('@electric-sql/pglite');
 
-const migration = fs.readFileSync('supabase/migrations/20261004071138_production_reconciliation.sql', 'utf8');
+const migration = fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort().map(f=>fs.readFileSync('supabase/migrations/'+f,'utf8')).join('\n');
 const schema = `
 create role anon; create role authenticated; create role service_role bypassrls;
 create schema storage;
@@ -76,7 +76,7 @@ test('verified transition queues once, paid cancellation preserves evidence, lat
     assert.equal((await scalar(db,"select finalize_wayl_payment($1,51,65000,'live') as result",[ref])).error,'payment_mismatch');
     const first=await paid(db,ref); assert.equal(first.status,'confirmed');
     assert.equal((await paid(db,ref)).duplicate,true);
-    assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs'),1);
+    assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs'),2);
     await scalar(db,'select cancel_booking($1) as result',[a.id]);
     assert.equal(await scalar(db,'select payment_status as result from appointments where id=$1',[a.id]),'paid');
     assert.equal((await paid(db,ref)).manualReview,true);
@@ -85,7 +85,7 @@ test('verified transition queues once, paid cancellation preserves evidence, lat
     await db.query("update appointments set payment_expires_at=now()-interval '1 minute',payment_provider='wayl',payment_reference=$1 where id=$2",[late,b.id]);
     assert.equal((await paid(db,late)).status,'cancelled');
     assert.equal(await scalar(db,'select is_booked as result from time_slots where id=$1',[id2]),false);
-    assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs'),1);
+    assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs'),2);
   } finally { await db.close(); }
 });
 
@@ -94,7 +94,7 @@ test('email leases recover interruptions and require review outside provider ded
   try {
     const a=(await reserve(db,await slot(db))).appointment;
     await paid(db,await attach(db,a.id));
-    const jid=await scalar(db,'select id as result from consultation_email_jobs');
+    const jid=await scalar(db,"select id as result from consultation_email_jobs where purpose='invitation'");
     const claims=await Promise.all([scalar(db,'select claim_consultation_email($1) as result',[jid]),scalar(db,'select claim_consultation_email($1) as result',[jid])]);
     assert.equal(claims.filter(Boolean).length,1);
     assert.equal(await scalar(db,'select consultation_email_sent_at as result from appointments where id=$1',[a.id]),null);
@@ -125,4 +125,33 @@ test('expiry and session gates never alter or admit an active unpaid legacy book
     assert.equal(await scalar(db,'select complete_consultation($1) as result',[a.id]),false);
     assert.deepEqual(await scalar(db,'select to_jsonb(a) as result from appointments a where id=$1',[a.id]),before);
   } finally { await db.close(); }
+});
+
+
+test('consultant outbox state is independent, invitation resends exclude consultant jobs, and no historical backfill occurs', async () => {
+  const db=await setup();
+  try {
+    const a=(await reserve(db,await slot(db))).appointment;
+    const ref=await attach(db,a.id);
+    await paid(db,ref);
+    const consultant=await scalar(db,"select id as result from consultation_email_jobs where purpose='consultant_notification'");
+    const invitation=await scalar(db,"select queue_consultation_email($1) as result",[a.id]);
+    assert.notEqual(invitation,consultant);
+    let job=await scalar(db,'select claim_consultation_email($1) as result',[consultant]);
+    await scalar(db,'select finish_consultation_email($1,$2) as result',[consultant,job.lease_token]);
+    assert.equal(await scalar(db,'select consultation_email_last_error as result from appointments where id=$1',[a.id]),null);
+    await db.query('update consultation_email_jobs set next_attempt_at=now() where id=$1',[consultant]);
+    job=await scalar(db,'select claim_consultation_email($1) as result',[consultant]);
+    await scalar(db,"select finish_consultation_email($1,$2,'consultant-accepted') as result",[consultant,job.lease_token]);
+    assert.equal(await scalar(db,'select consultation_email_sent_at as result from appointments where id=$1',[a.id]),null);
+    job=await scalar(db,'select claim_consultation_email($1) as result',[invitation]);
+    await scalar(db,"select finish_consultation_email($1,$2,'customer-accepted') as result",[invitation,job.lease_token]);
+    assert.ok(await scalar(db,'select consultation_email_sent_at as result from appointments where id=$1',[a.id]));
+    await paid(db,ref);assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs'),2);
+    const historical=(await reserve(db,await slot(db),'h'.repeat(40))).appointment;
+    const historicalRef=ref.replace('11111111','33333333');
+    await db.query("update appointments set payment_reference=$1,payment_provider='wayl',payment_status='paid',status='confirmed' where id=$2",[historicalRef,historical.id]);
+    await paid(db,historicalRef);
+    assert.equal(await scalar(db,'select count(*)::int as result from consultation_email_jobs where appointment_id=$1',[historical.id]),0);
+  } finally {await db.close();}
 });

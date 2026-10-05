@@ -61,3 +61,17 @@ Review pending/review email jobs if automatic delivery fails. Never blindly rese
 ambiguous delivery beyond the provider's deduplication window. The Hobby-compatible
 daily cron runs at 03:00 UTC and handles ten jobs; some failed deliveries will require
 manual review. Inbox delivery and a two-participant Daily call need human verification.
+
+
+## Consultant confirmation notifications
+
+Set server-only `CONSULTANT_NOTIFICATION_EMAIL` in Production to the consultant's
+recipient address. Newly verified Wayl paid confirmations atomically enqueue one
+`consultant_notification` alongside the existing customer invitation. Existing or
+historical paid bookings are never backfilled. The notification includes booking
+snapshots and the webhook-validated IQD quote, not a conversion at the current rate.
+Its consultation link uses the existing authenticated admin route without customer
+tokens. Recipient failures have independent job state and cannot change payment,
+booking confirmation, or customer invitation delivery records. Both purposes use
+stable per-job Resend keys and the existing leased retry/review limits. Daily cron
+retries at 03:00 UTC; five attempts or ambiguity outside 23 hours requires review.

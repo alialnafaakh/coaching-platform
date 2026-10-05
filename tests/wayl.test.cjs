@@ -97,11 +97,12 @@ function setup(overrides = {}, envOverrides = {}) {
         const status=a.status==='pending_payment' ? (new Date(a.payment_expires_at)>new Date()?'confirmed':'cancelled'):a.status;
         write({payment_status:'paid',status});
         state.time_slots[0].is_booked=state.appointments.some(row=>['pending_payment','confirmed','in_progress'].includes(row.status));
-        if (['confirmed','in_progress'].includes(status) && !a.consultation_email_sent_at) state.jobs.push({id:'synthetic-job',appointment_id:a.id,status:'pending'});
+        if (['confirmed','in_progress'].includes(status) && !a.consultation_email_sent_at) state.jobs.push({id:'synthetic-job',appointment_id:a.id,status:'pending',purpose:'invitation'});
+        if (['confirmed','in_progress'].includes(status)) state.jobs.push({id:'synthetic-consultant-job',appointment_id:a.id,status:'pending',purpose:'consultant_notification'});
       }
       return {data:{id:a.id,status:a.status,duplicate,manualReview:a.status==='cancelled'},error:null};
     }
-    if (name === 'queue_consultation_email') return {data:state.jobs[0]?.id || null,error:null};
+    if (name === 'queue_consultation_email') return {data:state.jobs.find(j=>j.purpose==='invitation')?.id || null,error:null};
     if (name === 'claim_consultation_email') {
       const job=state.jobs.find(j=>j.id===p.p_job_id);
       if (!job || job.status!=='pending') return {data:null,error:null};
@@ -109,13 +110,13 @@ function setup(overrides = {}, envOverrides = {}) {
     }
     if (name === 'finish_consultation_email') {
       const job=state.jobs.find(j=>j.id===p.p_job_id);
-      if (p.p_provider_id) {job.status='sent';write({consultation_email_sent_at:new Date().toISOString(),consultation_email_last_error:null});}
-      else {job.status=p.p_skipped?'skipped':'pending';if(!p.p_skipped) write({consultation_email_last_error:'EMAIL_DELIVERY_UNAVAILABLE'});}
+      if (p.p_provider_id) {job.status='sent';if(job.purpose!=='consultant_notification') write({consultation_email_sent_at:new Date().toISOString(),consultation_email_last_error:null});}
+      else {job.status=p.p_skipped?'skipped':'pending';if(!p.p_skipped && job.purpose!=='consultant_notification') write({consultation_email_last_error:'EMAIL_DELIVERY_UNAVAILABLE'});}
       return {data:true,error:null};
     }
     throw new Error('Unexpected RPC '+name);
   }, from(table) {
-    assert.ok(['appointments', 'time_slots', 'consultation_settings'].includes(table));
+    assert.ok(['appointments', 'time_slots', 'consultation_settings', 'consultation_email_jobs'].includes(table));
     let patch = null, insert = null, single = false, cap = Infinity;
     const filters = [];
     const q = {
@@ -140,7 +141,7 @@ function setup(overrides = {}, envOverrides = {}) {
             state[table].push(row);
             state.writes.push({ table, patch: { ...insert } });
           }
-          const rows = state[table].filter(r => filters.every(f => f(r))).slice(0, cap);
+          const rows = (table==='consultation_email_jobs'?state.jobs:state[table]).filter(r => filters.every(f => f(r))).slice(0, cap);
           if (patch) for (const r of rows) {
             state.writes.push({ table, patch: { ...patch } }); Object.assign(r, patch);
           }
@@ -155,17 +156,19 @@ function setup(overrides = {}, envOverrides = {}) {
   const bookings = load('src/lib/bookings.ts', {}, env);
   const email = load('src/lib/consultationEmail.ts', {
     resend: { Resend: class {
-      emails = { send: async message => {
+      emails = { send: async (message, options) => {
         assert.equal(state.appointments[0].payment_status, 'paid');
         assert.equal(state.appointments[0].status, 'confirmed');
         state.emailAttempts = (state.emailAttempts || 0) + 1;
-        if (state.emailFailure) return { error: { message: 'synthetic send failure' } };
+        state.emailKeys = [...(state.emailKeys || []), options.idempotencyKey];
+        if ((state.customerEmailFailure && message.to==='customer@example.test') || state.emailFailure || (state.consultantEmailFailure && message.to === env.CONSULTANT_NOTIFICATION_EMAIL)) return { error: { message: 'synthetic send failure' } };
         state.emails.add(message.to);
         state.emailMessages = [...(state.emailMessages || []), message];
         return { data: { id: 'synthetic-acceptance-id' }, error: null };
       } };
     } },
-    '@/lib/consultationAccess': { resolveSessionDurationMinutes: appt => appt.session_duration_minutes },
+    '@/lib/wayl': wayl,
+    '@/lib/consultationAccess': { CONSULTATION_TZ_OFFSET: '+03:00', resolveSessionDurationMinutes: appt => appt.session_duration_minutes },
   }, env);
   const security = load('src/lib/serverSecurity.ts', {}, env);
   const imports = {
@@ -695,4 +698,59 @@ test('a stale customer IQD quote is a precondition and cannot claim a reference 
   const result = await checkout(new Request('https://example.test/api/payments/checkout', { method: 'POST', body: JSON.stringify({ appointment_id: s.state.appointments[0].id, token: 'synthetic-join', expected_total_iqd: 58000 }) }));
   assert.equal(result.status, 409); assert.equal(s.state.requests.length, 0);
   assert.equal(s.state.writes.length, 0); assert.equal(s.state.appointments[0].payment_reference, null);
+});
+
+
+test('consultant receives one separate paid confirmation with authoritative details and safe admin link', async () => {
+  const s=setup({notes:'Please discuss <goals> & wellbeing'}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+  assert.equal((await s.event()).status,200);
+  assert.equal(s.state.jobs.length,2);
+  assert.equal(s.state.emails.size,2);
+  const customer=s.state.emailMessages.find(m=>m.to==='customer@example.test');
+  const consultant=s.state.emailMessages.find(m=>m.to==='consultant@example.test');
+  assert.ok(customer.text.includes('synthetic-join'));
+  for(const text of ['2026-10-02','12:00','12:40','40 minutes','UTC+03:00','$50 USD','5,000 IQD','Payment status: Paid','Appointment status: Confirmed','Please discuss <goals> & wellbeing']) assert.ok(consultant.text.includes(text));
+  assert.ok(consultant.html.includes('&lt;goals&gt; &amp; wellbeing'));
+  assert.ok(consultant.text.includes('/admin/appointments/'+s.state.appointments[0].id+'/consultation'));
+  assert.ok(!consultant.text.includes('synthetic-join'));
+  assert.ok(!consultant.text.includes(s.state.appointments[0].payment_reference));
+  assert.equal(new Set(s.state.emailKeys).size,2);
+  await s.event();
+  assert.equal(s.state.emailAttempts,2);
+  assert.equal(s.state.jobs.length,2);
+});
+
+test('consultant failure leaves customer invitation and confirmation intact; retry uses same key', async () => {
+  const s=setup({notes:null}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+  s.state.consultantEmailFailure=true;
+  await s.event();
+  const a=s.state.appointments[0];
+  assert.equal(a.payment_status,'paid');assert.equal(a.status,'confirmed');
+  assert.ok(a.consultation_email_sent_at);assert.equal(a.consultation_email_last_error,null);
+  assert.equal(s.state.jobs.find(j=>j.purpose==='consultant_notification').status,'pending');
+  s.state.consultantEmailFailure=false;
+  s.env.WAYL_USD_TO_IQD_RATE='999'; // Quote amount must remain the amount actually verified.
+  await s.event();
+  const consultant=s.state.emailMessages.find(m=>m.to==='consultant@example.test');
+  assert.ok(consultant.text.includes('5,000 IQD'));
+  assert.ok(!consultant.text.includes('Customer notes:'));
+  assert.equal(s.state.emailKeys[1],s.state.emailKeys[2]);
+  await s.event();assert.equal(s.state.emailAttempts,3);
+});
+
+test('pending, failed and expired bookings do not queue consultant notifications; customer failure is independent', async () => {
+  for(const changes of [{paymentStatus:'Pending'},{paymentStatus:'Failed'}]) {
+    const s=setup({}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+    await s.event(changes);assert.equal(s.state.jobs.length,0);assert.equal(s.state.emails.size,0);
+  }
+  const late=setup({payment_expires_at:new Date(Date.now()-60000).toISOString()}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+  await late.event();assert.equal(late.state.jobs.length,0);
+  const independent=setup({}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+  independent.state.customerEmailFailure=true;await independent.event();
+  assert.ok(independent.state.emails.has('consultant@example.test'));
+  assert.equal(independent.state.appointments[0].consultation_email_sent_at,null);
+  assert.ok(independent.state.appointments[0].consultation_email_last_error);
+  const unpaid=setup({}, {CONSULTANT_NOTIFICATION_EMAIL:'consultant@example.test'});
+  await unpaid.email.notifyConsultationConfirmed(unpaid.db,unpaid.state.appointments[0].id);
+  assert.equal(unpaid.state.emails.size,0);assert.equal(unpaid.state.jobs.length,0);
 });
